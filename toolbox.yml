@@ -1,0 +1,29 @@
+rabbitmq:
+  connection-string: amqp://spryker:spryker@localhost:5672/
+postgres:
+  connection-string: postgres://spryker:spryker@localhost:5432/spryker?sslmode=disable
+worker:
+  queues:
+    - "sync.storage.product"
+    - "sync.search.product"
+    - "sync.search.category"
+    - "sync.search.cms"
+    - "sync.storage.availability"
+    - "sync.storage.category"
+    - "sync.storage.cms"
+    - "sync.storage.cms_containers"
+    - "sync.storage.content"
+    - "sync.storage.customer_access"
+    - "sync.storage.customer_review"
+    - "sync.storage.dynamic_config"
+    - "sync.storage.magazine_review"
+    - "sync.storage.payment_methods"
+    - "sync.storage.price"
+    - "sync.storage.product_abstract_tax_set"
+    - "sync.storage.product_attribute_group"
+    - "sync.storage.product_concrete_relation"
+    - "sync.storage.product_label"
+    - "sync.storage.shipment_profile"
+    - "sync.storage.tax_set"
+    - "sync.storage.translation"
+    - "sync.storage.url"
