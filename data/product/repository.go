@@ -3,6 +3,7 @@ package product
 import (
 	"context"
 	"database/sql"
+	"log"
 	"queue-worker/data"
 
 	"github.com/lib/pq"
@@ -20,7 +21,7 @@ func NewRepository(conn *sql.DB) *Repository {
 	}
 }
 
-func (r *Repository) GetProductAbstractStorageData(ctx context.Context, filter data.Filter) ([]*ProductAbstractStorageEntity, error) {
+func (r *Repository) GetProductAbstractStorageData(ctx context.Context, filter data.Filter) (<-chan *ProductAbstractStorageEntity, error) {
 	var rows *sql.Rows
 	var err error
 
@@ -45,19 +46,26 @@ func (r *Repository) GetProductAbstractStorageData(ctx context.Context, filter d
 		return nil, err
 	}
 
-	var data []*ProductAbstractStorageEntity
-	for rows.Next() {
-		entity := &ProductAbstractStorageEntity{}
+	dataCh := make(chan *ProductAbstractStorageEntity)
+	go func() {
+		for rows.Next() {
+			entity := &ProductAbstractStorageEntity{}
 
-		err = rows.Scan(&entity.Key, &entity.Data, &entity.Store, &entity.Locale)
-		if err != nil {
-			return nil, err
+			err = rows.Scan(&entity.Key, &entity.Data, &entity.Store, &entity.Locale)
+			if err != nil {
+				log.Println(err.Error())
+
+				close(dataCh)
+
+				return
+			}
+
+			dataCh <- entity
 		}
+		close(dataCh)
+	}()
 
-		data = append(data, entity)
-	}
-
-	return data, nil
+	return dataCh, nil
 }
 
 func (r *Repository) GetProductAbstractResourceName() string {

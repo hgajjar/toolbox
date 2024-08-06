@@ -18,6 +18,10 @@ func (p *AvailabilityStorageEntity) GetStore() string {
 	return p.Store
 }
 
+func (p *AvailabilityStorageEntity) IsNil() bool {
+	return p == nil
+}
+
 func (p *AvailabilityStorageEntity) GenerateMappingKey(source, sourceId string) string {
 	return ""
 }

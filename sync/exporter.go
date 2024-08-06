@@ -17,7 +17,7 @@ type Exporter struct {
 }
 
 type SyncDataPluginInterface interface {
-	GetData(ctx context.Context, filter data.Filter) ([]EntityInterface, error)
+	GetData(ctx context.Context, filter data.Filter) (<-chan EntityInterface, error)
 	GetResourceName() string
 	GetQueueName() string
 	GetMappings() []MappingInterface
@@ -28,6 +28,7 @@ type EntityInterface interface {
 	GetData() string
 	GetStore() string
 	GenerateMappingKey(source, sourceId string) string
+	IsNil() bool
 }
 
 type MappingInterface interface {
@@ -68,23 +69,23 @@ func (e *Exporter) Export(ctx context.Context, IDs []int) error {
 }
 
 func (e *Exporter) exportData(ctx context.Context, plugin SyncDataPluginInterface, IDs []int) error {
-	chunksize := 1000
+	chunksize := 10000
 	offset := 0
 	limit := chunksize
 
 	for {
-		err, done := e.exportDataChunk(ctx, plugin, IDs, offset, limit)
+		err, hasMore := e.exportDataChunk(ctx, plugin, IDs, offset, limit)
 		if err != nil {
 			return err
 		}
-		if done {
+		if !hasMore {
 			return nil
 		}
 		offset += chunksize
 	}
 }
 
-func (e *Exporter) exportDataChunk(ctx context.Context, plugin SyncDataPluginInterface, IDs []int, offset, limit int) (err error, done bool) {
+func (e *Exporter) exportDataChunk(ctx context.Context, plugin SyncDataPluginInterface, IDs []int, offset, limit int) (err error, hasMore bool) {
 	// Check if the context is expired.
 	select {
 	default:
@@ -93,16 +94,16 @@ func (e *Exporter) exportDataChunk(ctx context.Context, plugin SyncDataPluginInt
 		return
 	}
 
-	syncEntities, err := plugin.GetData(ctx, data.NewFilter(offset, limit, IDs))
+	syncEntityCh, err := plugin.GetData(ctx, data.NewFilter(offset, limit, IDs))
 	if err != nil {
 		return
 	}
-	if len(syncEntities) == 0 {
-		done = true
-		return
-	}
 
-	for _, entity := range syncEntities {
+	for entity := range syncEntityCh {
+		if entity.IsNil() {
+			break
+		}
+
 		m := syncMessage{
 			message{
 				entity.GetKey(),
@@ -127,6 +128,8 @@ func (e *Exporter) exportDataChunk(ctx context.Context, plugin SyncDataPluginInt
 				return err, false
 			}
 		}
+
+		hasMore = true
 	}
 
 	return

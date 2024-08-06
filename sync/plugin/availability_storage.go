@@ -17,13 +17,13 @@ func NewAvailabilityStorageSync(repo *availability.Repository) *AvailabilityStor
 	}
 }
 
-func (a *AvailabilityStorageSync) GetData(ctx context.Context, filter data.Filter) ([]sync.EntityInterface, error) {
-	entities, err := a.repo.GetStorageData(ctx, filter)
+func (a *AvailabilityStorageSync) GetData(ctx context.Context, filter data.Filter) (<-chan sync.EntityInterface, error) {
+	dataCh, err := a.repo.GetStorageData(ctx, filter)
 	if err != nil {
 		return nil, err
 	}
 
-	return castToSyncEntities(entities), nil
+	return castChannelToSyncEntity(dataCh), nil
 }
 
 func (a *AvailabilityStorageSync) GetResourceName() string {

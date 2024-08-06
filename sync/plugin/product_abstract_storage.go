@@ -17,13 +17,13 @@ func NewProductAbstractStorageSync(repo *product.Repository) *ProductAbstractSto
 	}
 }
 
-func (p *ProductAbstractStorageSync) GetData(ctx context.Context, filter data.Filter) ([]sync.EntityInterface, error) {
-	entities, err := p.repo.GetProductAbstractStorageData(ctx, filter)
+func (p *ProductAbstractStorageSync) GetData(ctx context.Context, filter data.Filter) (<-chan sync.EntityInterface, error) {
+	dataCh, err := p.repo.GetProductAbstractStorageData(ctx, filter)
 	if err != nil {
 		return nil, err
 	}
 
-	return castToSyncEntities(entities), nil
+	return castChannelToSyncEntity(dataCh), nil
 }
 
 func (p *ProductAbstractStorageSync) GetResourceName() string {

@@ -36,6 +36,10 @@ func (p *CategoryImageStorageEntity) GetLocale() string {
 	return p.Locale
 }
 
+func (p *CategoryImageStorageEntity) IsNil() bool {
+	return p == nil
+}
+
 func (p *CategoryImageStorageEntity) GenerateMappingKey(source, sourceId string) string {
 	return ""
 }
@@ -56,6 +60,10 @@ func (p *CategoryNodeStorageEntity) GetLocale() string {
 	return p.Locale
 }
 
+func (p *CategoryNodeStorageEntity) IsNil() bool {
+	return p == nil
+}
+
 func (p *CategoryNodeStorageEntity) GenerateMappingKey(source, sourceId string) string {
 	return ""
 }
@@ -74,6 +82,10 @@ func (p *CategoryTreeStorageEntity) GetStore() string {
 
 func (p *CategoryTreeStorageEntity) GetLocale() string {
 	return p.Locale
+}
+
+func (p *CategoryTreeStorageEntity) IsNil() bool {
+	return p == nil
 }
 
 func (p *CategoryTreeStorageEntity) GenerateMappingKey(source, sourceId string) string {

@@ -17,13 +17,13 @@ func NewCategoryTreeStorageSync(repo *category.Repository) *CategoryTreeStorageS
 	}
 }
 
-func (p *CategoryTreeStorageSync) GetData(ctx context.Context, filter data.Filter) ([]sync.EntityInterface, error) {
+func (p *CategoryTreeStorageSync) GetData(ctx context.Context, filter data.Filter) (<-chan sync.EntityInterface, error) {
 	entities, err := p.repo.GetCategoryTreeStorageData(ctx, filter)
 	if err != nil {
 		return nil, err
 	}
 
-	return castToSyncEntities(entities), nil
+	return castChannelToSyncEntity(entities), nil
 }
 
 func (p *CategoryTreeStorageSync) GetResourceName() string {

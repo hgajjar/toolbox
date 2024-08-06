@@ -3,6 +3,7 @@ package availability
 import (
 	"context"
 	"database/sql"
+	"log"
 	"queue-worker/data"
 
 	"github.com/lib/pq"
@@ -20,7 +21,7 @@ func NewRepository(conn *sql.DB) *Repository {
 	}
 }
 
-func (r *Repository) GetStorageData(ctx context.Context, filter data.Filter) ([]*AvailabilityStorageEntity, error) {
+func (r *Repository) GetStorageData(ctx context.Context, filter data.Filter) (<-chan *AvailabilityStorageEntity, error) {
 	var rows *sql.Rows
 	var err error
 
@@ -45,19 +46,26 @@ func (r *Repository) GetStorageData(ctx context.Context, filter data.Filter) ([]
 		return nil, err
 	}
 
-	var data []*AvailabilityStorageEntity
-	for rows.Next() {
-		entity := &AvailabilityStorageEntity{}
+	dataCh := make(chan *AvailabilityStorageEntity)
+	go func() {
+		for rows.Next() {
+			entity := &AvailabilityStorageEntity{}
 
-		err = rows.Scan(&entity.Key, &entity.Data, &entity.Store)
-		if err != nil {
-			return nil, err
+			err = rows.Scan(&entity.Key, &entity.Data, &entity.Store)
+			if err != nil {
+				log.Println(err.Error())
+
+				close(dataCh)
+
+				return
+			}
+
+			dataCh <- entity
 		}
+		close(dataCh)
+	}()
 
-		data = append(data, entity)
-	}
-
-	return data, nil
+	return dataCh, nil
 }
 
 func (r *Repository) GetResourceName() string {

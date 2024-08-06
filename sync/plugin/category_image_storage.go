@@ -17,13 +17,13 @@ func NewCategoryImageStorageSync(repo *category.Repository) *CategoryImageStorag
 	}
 }
 
-func (p *CategoryImageStorageSync) GetData(ctx context.Context, filter data.Filter) ([]sync.EntityInterface, error) {
+func (p *CategoryImageStorageSync) GetData(ctx context.Context, filter data.Filter) (<-chan sync.EntityInterface, error) {
 	entities, err := p.repo.GetCategoryImageStorageData(ctx, filter)
 	if err != nil {
 		return nil, err
 	}
 
-	return castToSyncEntities(entities), nil
+	return castChannelToSyncEntity(entities), nil
 }
 
 func (p *CategoryImageStorageSync) GetResourceName() string {

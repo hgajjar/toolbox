@@ -3,6 +3,7 @@ package category
 import (
 	"context"
 	"database/sql"
+	"log"
 	"queue-worker/data"
 
 	"github.com/lib/pq"
@@ -10,7 +11,7 @@ import (
 
 const categoryImageResourceName = "category_image"
 
-func (r *Repository) GetCategoryImageStorageData(ctx context.Context, filter data.Filter) ([]*CategoryImageStorageEntity, error) {
+func (r *Repository) GetCategoryImageStorageData(ctx context.Context, filter data.Filter) (<-chan *CategoryImageStorageEntity, error) {
 	var rows *sql.Rows
 	var err error
 
@@ -35,19 +36,26 @@ func (r *Repository) GetCategoryImageStorageData(ctx context.Context, filter dat
 		return nil, err
 	}
 
-	var data []*CategoryImageStorageEntity
-	for rows.Next() {
-		entity := &CategoryImageStorageEntity{}
+	dataCh := make(chan *CategoryImageStorageEntity)
+	go func() {
+		for rows.Next() {
+			entity := &CategoryImageStorageEntity{}
 
-		err = rows.Scan(&entity.Key, &entity.Data, &entity.Locale)
-		if err != nil {
-			return nil, err
+			err = rows.Scan(&entity.Key, &entity.Data, &entity.Locale)
+			if err != nil {
+				log.Println(err.Error())
+
+				close(dataCh)
+
+				return
+			}
+
+			dataCh <- entity
 		}
+		close(dataCh)
+	}()
 
-		data = append(data, entity)
-	}
-
-	return data, nil
+	return dataCh, nil
 }
 
 func (r *Repository) GetCateogryImageResourceName() string {

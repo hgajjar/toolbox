@@ -17,13 +17,13 @@ func NewCategoryNodeStorageSync(repo *category.Repository) *CategoryNodeStorageS
 	}
 }
 
-func (p *CategoryNodeStorageSync) GetData(ctx context.Context, filter data.Filter) ([]sync.EntityInterface, error) {
+func (p *CategoryNodeStorageSync) GetData(ctx context.Context, filter data.Filter) (<-chan sync.EntityInterface, error) {
 	entities, err := p.repo.GetCategoryNodeStorageData(ctx, filter)
 	if err != nil {
 		return nil, err
 	}
 
-	return castToSyncEntities(entities), nil
+	return castChannelToSyncEntity(entities), nil
 }
 
 func (p *CategoryNodeStorageSync) GetResourceName() string {

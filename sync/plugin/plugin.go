@@ -2,15 +2,6 @@ package plugin
 
 import "queue-worker/sync"
 
-func castToSyncEntities[T sync.EntityInterface](entities []T) []sync.EntityInterface {
-	syncEntities := []sync.EntityInterface{}
-	for _, e := range entities {
-		syncEntities = append(syncEntities, e)
-	}
-
-	return syncEntities
-}
-
 func castToMappingEntities[T sync.MappingInterface](entities []T) []sync.MappingInterface {
 	mappings := []sync.MappingInterface{}
 	for _, e := range entities {
@@ -18,4 +9,16 @@ func castToMappingEntities[T sync.MappingInterface](entities []T) []sync.Mapping
 	}
 
 	return mappings
+}
+
+func castChannelToSyncEntity[T sync.EntityInterface](from <-chan T) <-chan sync.EntityInterface {
+	to := make(chan sync.EntityInterface)
+	go func() {
+		var val T
+		for {
+			val = <-from
+			to <- val
+		}
+	}()
+	return to
 }

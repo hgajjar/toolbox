@@ -3,6 +3,7 @@ package category
 import (
 	"context"
 	"database/sql"
+	"log"
 	"queue-worker/data"
 
 	"github.com/lib/pq"
@@ -10,7 +11,7 @@ import (
 
 const categoryTreeResourceName = "category_tree"
 
-func (r *Repository) GetCategoryTreeStorageData(ctx context.Context, filter data.Filter) ([]*CategoryTreeStorageEntity, error) {
+func (r *Repository) GetCategoryTreeStorageData(ctx context.Context, filter data.Filter) (<-chan *CategoryTreeStorageEntity, error) {
 	var rows *sql.Rows
 	var err error
 
@@ -35,19 +36,26 @@ func (r *Repository) GetCategoryTreeStorageData(ctx context.Context, filter data
 		return nil, err
 	}
 
-	var data []*CategoryTreeStorageEntity
-	for rows.Next() {
-		entity := &CategoryTreeStorageEntity{}
+	dataCh := make(chan *CategoryTreeStorageEntity)
+	go func() {
+		for rows.Next() {
+			entity := &CategoryTreeStorageEntity{}
 
-		err = rows.Scan(&entity.Key, &entity.Data, &entity.Store, &entity.Locale)
-		if err != nil {
-			return nil, err
+			err = rows.Scan(&entity.Key, &entity.Data, &entity.Store, &entity.Locale)
+			if err != nil {
+				log.Println(err.Error())
+
+				close(dataCh)
+
+				return
+			}
+
+			dataCh <- entity
 		}
+		close(dataCh)
+	}()
 
-		data = append(data, entity)
-	}
-
-	return data, nil
+	return dataCh, nil
 }
 
 func (r *Repository) GetCateogryTreeResourceName() string {

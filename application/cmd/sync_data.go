@@ -6,6 +6,7 @@ import (
 	"log"
 	"queue-worker/data/availability"
 	"queue-worker/data/category"
+	"queue-worker/data/content"
 	"queue-worker/data/product"
 	"queue-worker/sync"
 	"queue-worker/sync/plugin"
@@ -84,6 +85,7 @@ func getSyncDataPlugins(dbconn *sql.DB, resourceFilter string) []sync.SyncDataPl
 		plugin.NewCategoryImageStorageSync(category.NewRepository(dbconn)),
 		plugin.NewCategoryNodeStorageSync(category.NewRepository(dbconn)),
 		plugin.NewCategoryTreeStorageSync(category.NewRepository(dbconn)),
+		plugin.NewContentStorageSync(content.NewRepository(dbconn)),
 	}
 
 	if resourceFilter == "" {

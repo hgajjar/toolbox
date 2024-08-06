@@ -28,6 +28,10 @@ func (p *ProductAbstractStorageEntity) GetLocale() string {
 	return p.Locale
 }
 
+func (p *ProductAbstractStorageEntity) IsNil() bool {
+	return p == nil
+}
+
 func (p *ProductAbstractStorageEntity) GenerateMappingKey(source, sourceId string) string {
 	reference := fmt.Sprintf("%s:%s", source, sourceId)
 	keySuffix := fmt.Sprintf("%s:%s:%s", strings.ToLower(p.Store), strings.ToLower(p.Locale), reference)
