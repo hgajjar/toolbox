@@ -4,10 +4,8 @@ import (
 	"context"
 	"database/sql"
 	"log"
-	"queue-worker/data/availability"
-	"queue-worker/data/category"
-	"queue-worker/data/content"
-	"queue-worker/data/product"
+	"queue-worker/config"
+	syncData "queue-worker/data/sync"
 	"queue-worker/sync"
 	"queue-worker/sync/plugin"
 	"strconv"
@@ -30,6 +28,8 @@ If not, full export will be executed.
 	argIdsShort = "i"
 	argIdsUsage = `Defines ids for entities which should be exported, if there is more than one, use comma to separate them.
 If not, full export will be executed.`
+
+	syncDataEntitiesKey = "sync-data.entities"
 )
 
 type SyncDataCmd struct {
@@ -61,32 +61,21 @@ var syncDataCmd = &cobra.Command{
 		failOnError(err, "Failed to connect to RabbitMQ")
 		defer conn.Close()
 
-		ch, err := conn.Channel()
-		failOnError(err, "Failed to open a rabbitmq channel")
-		defer ch.Close()
-
 		dbconn, err := sql.Open("postgres", viper.GetString(argPostgresConnString))
 		failOnError(err, "Failed to connect to Postgres")
-		defer conn.Close()
+		defer dbconn.Close()
 
 		resourceFilter := viper.GetString(argResource)
 		idsFilter := viper.GetString(argIds)
 
-		exporter := sync.NewExporter(ch, getSyncDataPlugins(dbconn, resourceFilter))
+		exporter := sync.NewExporter(conn, getSyncDataPlugins(dbconn, resourceFilter))
 		err = exporter.Export(ctx, getIDs(idsFilter))
 		failOnError(err, "Failed to export data to rabbitmq")
 	},
 }
 
 func getSyncDataPlugins(dbconn *sql.DB, resourceFilter string) []sync.SyncDataPluginInterface {
-	allPlugins := []sync.SyncDataPluginInterface{
-		plugin.NewProductAbstractStorageSync(product.NewRepository(dbconn)),
-		plugin.NewAvailabilityStorageSync(availability.NewRepository(dbconn)),
-		plugin.NewCategoryImageStorageSync(category.NewRepository(dbconn)),
-		plugin.NewCategoryNodeStorageSync(category.NewRepository(dbconn)),
-		plugin.NewCategoryTreeStorageSync(category.NewRepository(dbconn)),
-		plugin.NewContentStorageSync(content.NewRepository(dbconn)),
-	}
+	allPlugins := generateSyncDataPlugins(dbconn)
 
 	if resourceFilter == "" {
 		return allPlugins
@@ -102,6 +91,20 @@ func getSyncDataPlugins(dbconn *sql.DB, resourceFilter string) []sync.SyncDataPl
 	}
 
 	return filteredPlugins
+}
+
+func generateSyncDataPlugins(dbconn *sql.DB) []sync.SyncDataPluginInterface {
+	var syncConfigEntities []config.SyncEntity
+
+	err := viper.UnmarshalKey(syncDataEntitiesKey, &syncConfigEntities)
+	failOnError(err, "Failed to parse sync-data.entities config")
+
+	var plugins []sync.SyncDataPluginInterface
+	for _, syncConfigEntity := range syncConfigEntities {
+		plugins = append(plugins, plugin.New(syncData.NewRepository(dbconn, &syncConfigEntity), &syncConfigEntity))
+	}
+
+	return plugins
 }
 
 func getIDs(idsFilter string) []int {

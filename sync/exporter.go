@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"log"
 	"queue-worker/data"
 	"time"
 
@@ -11,9 +12,15 @@ import (
 	"golang.org/x/sync/errgroup"
 )
 
+const (
+	rabbitMqBlockedConnWait = time.Millisecond * 200
+	exportChunksize         = 10000
+)
+
 type Exporter struct {
-	channel *amqp.Channel
-	plugins []SyncDataPluginInterface
+	conn          *amqp.Connection
+	connIsBlocked bool
+	plugins       []SyncDataPluginInterface
 }
 
 type SyncDataPluginInterface interface {
@@ -27,7 +34,7 @@ type EntityInterface interface {
 	GetKey() string
 	GetData() string
 	GetStore() string
-	GenerateMappingKey(source, sourceId string) string
+	GenerateMappingKey(resourceName, source, sourceId string) string
 	IsNil() bool
 }
 
@@ -49,11 +56,26 @@ type syncMessage struct {
 
 type mappingValue map[string]any
 
-func NewExporter(channel *amqp.Channel, plugins []SyncDataPluginInterface) *Exporter {
-	return &Exporter{
-		channel: channel,
+func NewExporter(conn *amqp.Connection, plugins []SyncDataPluginInterface) *Exporter {
+	exporter := &Exporter{
+		conn:    conn,
 		plugins: plugins,
 	}
+
+	blockings := conn.NotifyBlocked(make(chan amqp.Blocking))
+	go func(e *Exporter) {
+		for b := range blockings {
+			if b.Active {
+				e.connIsBlocked = true
+				log.Printf("RabbitMQ connection blocked: %q", b.Reason)
+			} else {
+				e.connIsBlocked = false
+				log.Printf("RabbitMQ connection unblocked")
+			}
+		}
+	}(exporter)
+
+	return exporter
 }
 
 func (e *Exporter) Export(ctx context.Context, IDs []int) error {
@@ -69,23 +91,26 @@ func (e *Exporter) Export(ctx context.Context, IDs []int) error {
 }
 
 func (e *Exporter) exportData(ctx context.Context, plugin SyncDataPluginInterface, IDs []int) error {
-	chunksize := 10000
 	offset := 0
-	limit := chunksize
+	limit := exportChunksize
+
+	rmqChannel, err := e.conn.Channel()
+	failOnError(err, "Failed to open a rabbitmq channel")
+	defer rmqChannel.Close()
 
 	for {
-		err, hasMore := e.exportDataChunk(ctx, plugin, IDs, offset, limit)
+		err, hasMore := e.exportDataChunk(ctx, plugin, rmqChannel, IDs, offset, limit)
 		if err != nil {
 			return err
 		}
 		if !hasMore {
 			return nil
 		}
-		offset += chunksize
+		offset += limit
 	}
 }
 
-func (e *Exporter) exportDataChunk(ctx context.Context, plugin SyncDataPluginInterface, IDs []int, offset, limit int) (err error, hasMore bool) {
+func (e *Exporter) exportDataChunk(ctx context.Context, plugin SyncDataPluginInterface, rmqChannel *amqp.Channel, IDs []int, offset, limit int) (err error, hasMore bool) {
 	// Check if the context is expired.
 	select {
 	default:
@@ -104,10 +129,16 @@ func (e *Exporter) exportDataChunk(ctx context.Context, plugin SyncDataPluginInt
 			break
 		}
 
+		var decodedVal any
+		err = json.Unmarshal([]byte(entity.GetData()), &decodedVal)
+		if err != nil {
+			return err, false
+		}
+
 		m := syncMessage{
 			message{
 				entity.GetKey(),
-				entity.GetData(),
+				decodedVal,
 				plugin.GetResourceName(),
 				entity.GetStore(),
 			},
@@ -117,13 +148,13 @@ func (e *Exporter) exportDataChunk(ctx context.Context, plugin SyncDataPluginInt
 			return err, false
 		}
 
-		err = e.publishMessage(plugin.GetQueueName(), j)
+		err = e.publishMessage(ctx, rmqChannel, plugin.GetQueueName(), j)
 		if err != nil {
 			return err, false
 		}
 
 		if mappings := plugin.GetMappings(); mappings != nil {
-			err = e.exportMappingData(mappings, plugin.GetResourceName(), plugin.GetQueueName(), entity)
+			err = e.exportMappingData(ctx, rmqChannel, mappings, plugin.GetResourceName(), plugin.GetQueueName(), entity)
 			if err != nil {
 				return err, false
 			}
@@ -135,11 +166,14 @@ func (e *Exporter) exportDataChunk(ctx context.Context, plugin SyncDataPluginInt
 	return
 }
 
-func (e *Exporter) publishMessage(queueName string, body []byte) error {
-	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+func (e *Exporter) publishMessage(parentCtx context.Context, rmqChannel *amqp.Channel, queueName string, body []byte) error {
+	ctx, cancel := context.WithTimeout(parentCtx, 5*time.Second)
 	defer cancel()
 
-	err := e.channel.PublishWithContext(ctx,
+	if e.connIsBlocked {
+		e.waitUntilConnIsUnblocked()
+	}
+	err := rmqChannel.PublishWithContext(ctx,
 		"",        // exchange
 		queueName, // routing key
 		false,     // mandatory
@@ -156,7 +190,7 @@ func (e *Exporter) publishMessage(queueName string, body []byte) error {
 	return nil
 }
 
-func (e *Exporter) exportMappingData(mappings []MappingInterface, resourceName string, queueName string, entity EntityInterface) error {
+func (e *Exporter) exportMappingData(ctx context.Context, rmqChannel *amqp.Channel, mappings []MappingInterface, resourceName string, queueName string, entity EntityInterface) error {
 
 	for _, mapping := range mappings {
 
@@ -175,7 +209,12 @@ func (e *Exporter) exportMappingData(mappings []MappingInterface, resourceName s
 			return fmt.Errorf("entity data does not have key %s", mapping.GetDestination())
 		}
 
-		key := entity.GenerateMappingKey(mapping.GetSource(), source.(string))
+		sourceVal, ok := source.(string)
+		if !ok {
+			return fmt.Errorf("failed to parse mapping source value as string. Resource: %s, Data: %s", resourceName, entity.GetData())
+		}
+
+		key := entity.GenerateMappingKey(resourceName, mapping.GetSource(), sourceVal)
 		value := mappingValue{"id": destination, "_timestamp": time.Now().Unix()}
 
 		m := syncMessage{
@@ -190,11 +229,29 @@ func (e *Exporter) exportMappingData(mappings []MappingInterface, resourceName s
 			return err
 		}
 
-		err = e.publishMessage(queueName, j)
+		err = e.publishMessage(ctx, rmqChannel, queueName, j)
 		if err != nil {
 			return err
 		}
 	}
 
 	return nil
+}
+
+func (e *Exporter) waitUntilConnIsUnblocked() {
+	for {
+		if !e.connIsBlocked {
+			break
+		}
+		if e.conn.IsClosed() {
+			log.Panic("RabbitMQ connection is closed unexpectedly")
+		}
+		time.Sleep(rabbitMqBlockedConnWait)
+	}
+}
+
+func failOnError(err error, msg string) {
+	if err != nil {
+		log.Panicf("%s: %s", msg, err)
+	}
 }

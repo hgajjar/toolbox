@@ -27,3 +27,332 @@ worker:
     - "sync.storage.tax_set"
     - "sync.storage.translation"
     - "sync.storage.url"
+
+sync-data:
+  entities:
+    - resource: availability
+      table: spy_availability_storage
+      filter_column: fk_availability_abstract
+      id_column: id_availability_storage
+      store: true
+      locale: false
+      queue_group: sync.storage.availability
+    - resource: category_image
+      table: spy_category_image_storage
+      filter_column: fk_category
+      id_column: id_category_image_storage
+      store: false
+      locale: true
+      queue_group: sync.storage.category
+    - resource: category_node
+      table: spy_category_node_storage
+      filter_column: fk_category_node
+      id_column: id_category_node_storage
+      store: true
+      locale: true
+      queue_group: sync.storage.category
+    - resource: category_node
+      table: spy_category_node_page_search
+      filter_column: fk_category_node
+      id_column: id_category_node_page_search
+      store: true
+      locale: true
+      queue_group: sync.search.category
+    - resource: category_tree
+      table: spy_category_tree_storage
+      filter_column: id_category_tree_storage
+      id_column: id_category_tree_storage
+      store: true
+      locale: true
+      queue_group: sync.storage.category
+    - resource: cms_block
+      table: spy_cms_block_storage
+      filter_column: fk_cms_block
+      id_column: id_cms_block_storage
+      store: true
+      locale: true
+      queue_group: sync.storage.cms
+      mappings:
+        - source: name
+          destination: key
+    - resource: cms_containers
+      table: pyz_container_storage
+      filter_column: id_container_storage
+      id_column: id_container_storage
+      store: true
+      locale: false
+      queue_group: sync.storage.cms_containers
+      mappings:
+        - source: title
+          destination: id_container
+    - resource: cms_page
+      table: spy_cms_page_storage
+      filter_column: fk_cms_page
+      id_column: id_cms_page_storage
+      store: true
+      locale: true
+      queue_group: sync.storage.cms
+      mappings:
+        - source: page_key
+          destination: id_cms_page
+    - resource: cms_page_search
+      table: spy_cms_page_search
+      filter_column: fk_cms_page
+      id_column: id_cms_page_search
+      store: true
+      locale: true
+      queue_group: sync.search.cms
+    - resource: content
+      table: spy_content_storage
+      filter_column: fk_content
+      id_column: id_content_storage
+      store: false
+      locale: true
+      queue_group: sync.storage.content
+      mappings:
+        - source: content_key
+          destination: idContent
+    - resource: customer_review
+      table: pyz_customer_review_storage
+      filter_column: fk_product_abstract
+      id_column: id_customer_review_storage
+      store: false
+      locale: false
+      queue_group: sync.storage.customer_review
+    - resource: customer_review
+      table: pyz_customer_review_search
+      filter_column: fk_customer_review
+      id_column: id_customer_review_search
+      store: false
+      locale: true
+      queue_group: sync.search.product #seems like a mistake on Spryker side
+    - resource: dynamic_config
+      table: pyz_dynamic_config_storage
+      filter_column: id_dynamic_config_storage
+      id_column: id_dynamic_config_storage
+      store: false
+      locale: false
+      queue_group: sync.storage.dynamic_config
+    - resource: magazine_review
+      table: pyz_magazine_review_storage
+      filter_column: id_magazine_review_storage
+      id_column: id_magazine_review_storage
+      store: true
+      locale: true
+      queue_group: sync.storage.magazine_review
+    - resource: navigation
+      table: spy_navigation_storage
+      filter_column: fk_navigation
+      id_column: id_navigation_storage
+      store: false
+      locale: true
+      queue_group: sync.storage.category
+    - resource: price_product_abstract
+      table: spy_price_product_abstract_storage
+      filter_column: fk_product_abstract
+      id_column: id_price_product_abstract_storage
+      store: true
+      locale: false
+      queue_group: sync.storage.price
+    - resource: price_product_concrete
+      table: spy_price_product_concrete_storage
+      filter_column: fk_product
+      id_column: id_price_product_concrete_storage
+      store: true
+      locale: false
+      queue_group: sync.storage.price
+    - resource: product_abstract
+      table: spy_product_abstract_storage
+      filter_column: fk_product_abstract
+      id_column: id_product_abstract_storage
+      store: true
+      locale: true
+      queue_group: sync.storage.product
+      mappings:
+        - source: sku
+          destination: id_product_abstract
+    - resource: product_abstract
+      table: spy_product_abstract_page_search
+      filter_column: fk_product_abstract
+      id_column: id_product_abstract_page_search
+      store: true
+      locale: true
+      queue_group: sync.search.product
+    - resource: product_abstract_category
+      table: spy_product_abstract_category_storage
+      filter_column: fk_product_abstract
+      id_column: id_product_abstract_category_storage
+      store: true
+      locale: true
+      queue_group: sync.storage.product
+    - resource: product_abstract_image
+      table: spy_product_abstract_image_storage
+      filter_column: fk_product_abstract
+      id_column: id_product_abstract_image_storage
+      store: false
+      locale: true
+      queue_group: sync.storage.product
+    - resource: product_abstract_label
+      table: spy_product_abstract_label_storage
+      filter_column: id_product_abstract_label_storage
+      id_column: id_product_abstract_label_storage
+      store: false
+      locale: false
+      queue_group: sync.storage.product
+    - resource: product_abstract_option
+      table: spy_product_abstract_option_storage
+      filter_column: fk_product_abstract
+      id_column: id_product_abstract_option_storage
+      store: true
+      locale: false
+      queue_group: sync.storage.product
+    - resource: product_abstract_relation
+      table: spy_product_abstract_relation_storage
+      filter_column: id_product_abstract_relation_storage
+      id_column: id_product_abstract_relation_storage
+      store: true
+      locale: false
+      queue_group: sync.storage.product
+    - resource: product_abstract_tax_set
+      table: spy_tax_product_storage
+      filter_column: fk_product_abstract
+      id_column: id_tax_product_storage
+      store: false
+      locale: false
+      queue_group: sync.storage.product_abstract_tax_set
+    - resource: product_alternative
+      table: spy_product_alternative_storage
+      filter_column: id_product_alternative_storage
+      id_column: id_product_alternative_storage
+      store: false
+      locale: false
+      queue_group: sync.storage.product
+    - resource: product_attribute_group
+      table: pyz_product_attribute_group_storage
+      filter_column: fk_product_attribute_group
+      id_column: id_product_attribute_group_storage
+      store: false
+      locale: false
+      queue_group: sync.storage.product_attribute_group
+    - resource: product_bundle
+      table: spy_product_bundle_storage
+      filter_column: fk_product
+      id_column: id_product_bundle_storage
+      store: false
+      locale: false
+      queue_group: sync.storage.product
+    - resource: product_category_filter
+      table: spy_product_category_filter_storage
+      filter_column: fk_category
+      id_column: id_product_category_filter_storage
+      store: false
+      locale: false
+      queue_group: sync.storage.category
+    - resource: product_concrete
+      table: spy_product_concrete_page_search
+      filter_column: fk_product
+      id_column: id_product_concrete_page_search
+      store: true
+      locale: true
+      queue_group: sync.search.product
+    - resource: product_concrete
+      table: spy_product_concrete_storage
+      filter_column: fk_product
+      id_column: id_product_concrete_storage
+      store: false
+      locale: true
+      queue_group: sync.storage.product
+      mappings:
+        - source: sku
+          destination: id_product_concrete 
+    - resource: product_concrete_image
+      table: spy_product_concrete_image_storage
+      filter_column: fk_product
+      id_column: id_product_concrete_image_storage
+      store: false
+      locale: true
+      queue_group: sync.storage.product
+    - resource: product_concrete_relation
+      table: pyz_product_concrete_relation_storage
+      filter_column: fk_product
+      id_column: id_product_concrete_relation_storage
+      store: false
+      locale: false
+      queue_group: sync.storage.product_concrete_relation
+    - resource: product_discontinued
+      table: spy_product_discontinued_storage
+      filter_column: id_product_discontinued_storage
+      id_column: id_product_discontinued_storage
+      store: false
+      locale: true
+      queue_group: sync.storage.product
+    - resource: product_label_dictionary
+      table: spy_product_label_dictionary_storage
+      filter_column: id_product_label_dictionary_storage
+      id_column: id_product_label_dictionary_storage
+      store: true
+      locale: true
+      queue_group: sync.storage.product
+    - resource: product_quantity
+      table: spy_product_quantity_storage
+      filter_column: fk_product
+      id_column: id_product_quantity_storage
+      store: false
+      locale: false
+      queue_group: sync.storage.product
+    - resource: product_replacement_for
+      table: spy_product_replacement_for_storage
+      filter_column: id_product_replacement_for_storage
+      id_column: id_product_replacement_for_storage
+      store: false
+      locale: false
+      queue_group: sync.storage.product
+    - resource: product_search_config_extension
+      table: spy_product_search_config_storage
+      filter_column: id_product_search_config_storage
+      id_column: id_product_search_config_storage
+      store: false
+      locale: false
+      queue_group: sync.storage.product
+    - resource: redirect
+      table: spy_url_redirect_storage
+      filter_column: fk_url_redirect
+      id_column: id_url_redirect_storage
+      store: false
+      locale: false
+      queue_group: sync.storage.url
+    - resource: shipment_profile
+      table: pyz_shipment_profile_storage
+      filter_column: id_shipment_profile_storage
+      id_column: id_shipment_profile_storage
+      store: true
+      locale: false
+      queue_group: sync.storage.shipment_profile
+    - resource: tax_set
+      table: spy_tax_set_storage
+      filter_column: fk_tax_set
+      id_column: id_tax_set_storage
+      store: false
+      locale: false
+      queue_group: sync.storage.tax_set
+    - resource: translation
+      table: spy_glossary_storage
+      filter_column: id_glossary_storage
+      id_column: id_glossary_storage
+      store: false
+      locale: true
+      queue_group: sync.storage.translation
+    - resource: unauthenticated_customer_access
+      table: spy_unauthenticated_customer_access_storage
+      filter_column: id_unauthenticated_customer_access_storage
+      id_column: id_unauthenticated_customer_access_storage
+      store: false
+      locale: false
+      queue_group: sync.storage.customer_access
+    - resource: url
+      table: spy_url_storage
+      filter_column: fk_url
+      id_column: id_url_storage
+      store: false
+      locale: true
+      queue_group: sync.storage.url
