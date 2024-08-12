@@ -1,10 +1,12 @@
 package cmd
 
 import (
-	"context"
+	"os"
+	"queue-worker/config"
 	"queue-worker/queue"
 
 	amqp "github.com/rabbitmq/amqp091-go"
+	"github.com/rs/zerolog"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 )
@@ -40,7 +42,15 @@ func NewQueueWorkerCmd() *QueueWorkerCmd {
 var queueWorkerCmd = &cobra.Command{
 	Use: "queue:worker",
 	Run: func(cmd *cobra.Command, args []string) {
-		ctx := context.Background()
+		zerolog.SetGlobalLevel(zerolog.InfoLevel)
+		if config.Verbose {
+			zerolog.SetGlobalLevel(zerolog.DebugLevel)
+		}
+
+		logger := zerolog.New(zerolog.ConsoleWriter{Out: os.Stderr}).With().Timestamp().Logger()
+
+		// Attach the Logger to the context.Context
+		ctx := logger.WithContext(cmd.Context())
 
 		conn, err := amqp.Dial(viper.GetString(argRabbitmqConnString))
 		failOnError(err, "Failed to connect to RabbitMQ")

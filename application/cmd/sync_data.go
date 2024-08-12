@@ -4,6 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"log"
+	"os"
 	"queue-worker/config"
 	syncData "queue-worker/data/sync"
 	"queue-worker/queue"
@@ -14,6 +15,7 @@ import (
 
 	_ "github.com/lib/pq"
 	amqp "github.com/rabbitmq/amqp091-go"
+	"github.com/rs/zerolog"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 )
@@ -65,7 +67,15 @@ func (s *SyncDataCmd) Cmd() *cobra.Command {
 var syncDataCmd = &cobra.Command{
 	Use: "sync:data",
 	Run: func(cmd *cobra.Command, args []string) {
-		ctx := cmd.Context()
+		zerolog.SetGlobalLevel(zerolog.InfoLevel)
+		if config.Verbose {
+			zerolog.SetGlobalLevel(zerolog.DebugLevel)
+		}
+
+		logger := zerolog.New(zerolog.ConsoleWriter{Out: os.Stderr}).With().Timestamp().Logger()
+
+		// Attach the Logger to the context.Context
+		ctx := logger.WithContext(cmd.Context())
 
 		conn, err := amqp.Dial(viper.GetString(argRabbitmqConnString))
 		failOnError(err, "Failed to connect to RabbitMQ")

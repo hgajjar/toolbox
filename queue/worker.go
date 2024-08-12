@@ -7,26 +7,38 @@ import (
 	"log"
 	"os/exec"
 	"sort"
+	"strings"
 	"sync"
 	"time"
 
 	"github.com/gosuri/uilive"
 	amqp "github.com/rabbitmq/amqp091-go"
+	"github.com/rs/zerolog"
+	"github.com/spf13/viper"
+)
+
+const (
+	consoleCmdPrefixKey = "worker.consoleCmdPrefix"
+	consoleCmdDirKey    = "worker.consoleCmdDir"
 )
 
 type Worker struct {
-	conn       *amqp.Connection
-	queues     []string
-	daemonMode bool
+	conn             *amqp.Connection
+	queues           []string
+	daemonMode       bool
+	consoleCmdPrefix []string
+	consoleCmdDir    string
 }
 
 type queueMessageMap map[string]int
 
 func NewWorker(conn *amqp.Connection, queues []string, daemonMode bool) *Worker {
 	return &Worker{
-		conn:       conn,
-		queues:     queues,
-		daemonMode: daemonMode,
+		conn:             conn,
+		queues:           queues,
+		daemonMode:       daemonMode,
+		consoleCmdPrefix: strings.Split(viper.GetString(consoleCmdPrefixKey), " "),
+		consoleCmdDir:    viper.GetString(consoleCmdDirKey),
 	}
 }
 
@@ -51,10 +63,10 @@ func (w *Worker) Execute(ctx context.Context) {
 	for queue := range qMap {
 		wg.Add(1)
 
-		go func(queue string) {
+		go func(ctx context.Context, queue string) {
 			defer wg.Done()
-			w.startQueueProcess(queue, qMap, &queueWrite)
-		}(queue)
+			w.startQueueProcess(ctx, queue, qMap, &queueWrite)
+		}(ctx, queue)
 	}
 
 	go func() {
@@ -95,9 +107,9 @@ func (w *Worker) sortMapKeys(queues queueMessageMap) []string {
 	return keys
 }
 
-func (w *Worker) startQueueProcess(queue string, queues queueMessageMap, queueWrite *sync.RWMutex) {
+func (w *Worker) startQueueProcess(ctx context.Context, queue string, queues queueMessageMap, queueWrite *sync.RWMutex) {
 	rmqChannel, err := w.conn.Channel()
-	w.failOnError(err, "Failed to open a rabbitmq channel")
+	w.failOnError(ctx, err, "Failed to open a rabbitmq channel")
 	defer rmqChannel.Close()
 
 	for {
@@ -109,14 +121,14 @@ func (w *Worker) startQueueProcess(queue string, queues queueMessageMap, queueWr
 			false,
 			nil,
 		)
-		w.failOnError(err, "Failed to declare a queue")
+		w.failOnError(ctx, err, "Failed to declare a queue")
 
 		queueWrite.Lock()
 		queues[queue] = q.Messages
 		queueWrite.Unlock()
 
 		if q.Messages > 0 {
-			w.triggerQueueProcess(queue)
+			w.triggerQueueProcess(ctx, queue)
 		} else {
 			if w.daemonMode {
 				time.Sleep(time.Millisecond * 100)
@@ -127,9 +139,11 @@ func (w *Worker) startQueueProcess(queue string, queues queueMessageMap, queueWr
 	}
 }
 
-func (w *Worker) triggerQueueProcess(queue string) {
-	cmd := exec.Command("ws", "exec", "console", "queue:task:start", queue)
-	cmd.Dir = "/Users/hardikgajjar/htdocs/lautsprecher-teufel"
+func (w *Worker) triggerQueueProcess(ctx context.Context, queue string) {
+	cmdArgs := append(w.consoleCmdPrefix, "queue:task:start", queue)
+
+	cmd := exec.CommandContext(ctx, cmdArgs[0], cmdArgs[1:]...)
+	cmd.Dir = viper.GetString(consoleCmdDirKey)
 
 	if op, err := cmd.Output(); err != nil {
 		fmt.Println(string(op))
@@ -146,8 +160,8 @@ func (w *Worker) initQueueMessageMap() queueMessageMap {
 	return qMap
 }
 
-func (w *Worker) failOnError(err error, msg string) {
+func (w *Worker) failOnError(ctx context.Context, err error, msg string) {
 	if err != nil {
-		log.Panicf("%s: %s", msg, err)
+		zerolog.Ctx(ctx).Panic().Stack().Err(err).Msg(msg)
 	}
 }

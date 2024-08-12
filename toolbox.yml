@@ -3,6 +3,8 @@ rabbitmq:
 postgres:
   connection-string: postgres://spryker:spryker@localhost:5432/spryker?sslmode=disable
 worker:
+  consoleCmdPrefix: "ws exec console"
+  consoleCmdDir: "/Users/hardikgajjar/htdocs/lautsprecher-teufel"
   queues:
     - "sync.storage.product"
     - "sync.search.product"
@@ -27,7 +29,6 @@ worker:
     - "sync.storage.tax_set"
     - "sync.storage.translation"
     - "sync.storage.url"
-
 sync-data:
   entities:
     - resource: availability

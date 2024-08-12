@@ -4,11 +4,11 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"log"
 	"queue-worker/data"
 	"time"
 
 	amqp "github.com/rabbitmq/amqp091-go"
+	"github.com/rs/zerolog"
 	"golang.org/x/sync/errgroup"
 )
 
@@ -57,28 +57,15 @@ type syncMessage struct {
 type mappingValue map[string]any
 
 func NewExporter(conn *amqp.Connection, plugins []SyncDataPluginInterface) *Exporter {
-	exporter := &Exporter{
+	return &Exporter{
 		conn:    conn,
 		plugins: plugins,
 	}
-
-	blockings := conn.NotifyBlocked(make(chan amqp.Blocking))
-	go func(e *Exporter) {
-		for b := range blockings {
-			if b.Active {
-				e.connIsBlocked = true
-				log.Printf("RabbitMQ connection blocked: %q", b.Reason)
-			} else {
-				e.connIsBlocked = false
-				log.Printf("RabbitMQ connection unblocked")
-			}
-		}
-	}(exporter)
-
-	return exporter
 }
 
 func (e *Exporter) Export(ctx context.Context, IDs []int) error {
+	e.listenRabbitMqNotifications(ctx)
+
 	errs, ctx := errgroup.WithContext(ctx)
 
 	for _, plugin := range e.plugins {
@@ -90,12 +77,29 @@ func (e *Exporter) Export(ctx context.Context, IDs []int) error {
 	return errs.Wait()
 }
 
+func (e *Exporter) listenRabbitMqNotifications(ctx context.Context) {
+	blockings := e.conn.NotifyBlocked(make(chan amqp.Blocking))
+
+	go func(ctx context.Context, e *Exporter) {
+		logger := zerolog.Ctx(ctx)
+		for b := range blockings {
+			if b.Active {
+				e.connIsBlocked = true
+				logger.Debug().Msgf("RabbitMQ connection blocked: %q", b.Reason)
+			} else {
+				e.connIsBlocked = false
+				logger.Debug().Msgf("RabbitMQ connection unblocked")
+			}
+		}
+	}(ctx, e)
+}
+
 func (e *Exporter) exportData(ctx context.Context, plugin SyncDataPluginInterface, IDs []int) error {
 	offset := 0
 	limit := exportChunksize
 
 	rmqChannel, err := e.conn.Channel()
-	failOnError(err, "Failed to open a rabbitmq channel")
+	failOnError(ctx, err, "Failed to open a rabbitmq channel")
 	defer rmqChannel.Close()
 
 	for {
@@ -171,7 +175,7 @@ func (e *Exporter) publishMessage(parentCtx context.Context, rmqChannel *amqp.Ch
 	defer cancel()
 
 	if e.connIsBlocked {
-		e.waitUntilConnIsUnblocked()
+		e.waitUntilConnIsUnblocked(ctx)
 	}
 	err := rmqChannel.PublishWithContext(ctx,
 		"",        // exchange
@@ -238,20 +242,20 @@ func (e *Exporter) exportMappingData(ctx context.Context, rmqChannel *amqp.Chann
 	return nil
 }
 
-func (e *Exporter) waitUntilConnIsUnblocked() {
+func (e *Exporter) waitUntilConnIsUnblocked(ctx context.Context) {
 	for {
 		if !e.connIsBlocked {
 			break
 		}
 		if e.conn.IsClosed() {
-			log.Panic("RabbitMQ connection is closed unexpectedly")
+			failOnError(ctx, nil, "RabbitMQ connection is closed unexpectedly")
 		}
 		time.Sleep(rabbitMqBlockedConnWait)
 	}
 }
 
-func failOnError(err error, msg string) {
+func failOnError(ctx context.Context, err error, msg string) {
 	if err != nil {
-		log.Panicf("%s: %s", msg, err)
+		zerolog.Ctx(ctx).Panic().Stack().Err(err).Msg(msg)
 	}
 }
