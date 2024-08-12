@@ -6,6 +6,7 @@ import (
 	"log"
 	"queue-worker/config"
 	syncData "queue-worker/data/sync"
+	"queue-worker/queue"
 	"queue-worker/sync"
 	"queue-worker/sync/plugin"
 	"strconv"
@@ -29,7 +30,16 @@ If not, full export will be executed.
 	argIdsUsage = `Defines ids for entities which should be exported, if there is more than one, use comma to separate them.
 If not, full export will be executed.`
 
+	argRunQueueWorker      = "run-queue-worker"
+	argRunQueueWorkerShort = "q"
+	argRunQueueWorkerUsage = `Run queue workers in the background.`
+
 	syncDataEntitiesKey = "sync-data.entities"
+)
+
+var (
+	idsOpt            string
+	runQueueWorkerOpt bool
 )
 
 type SyncDataCmd struct {
@@ -40,8 +50,8 @@ func NewSyncDataCmd() *SyncDataCmd {
 	syncDataCmd.PersistentFlags().StringP(argResource, argResourceShort, "", argResourceUsage)
 	viper.BindPFlag(argResource, syncDataCmd.PersistentFlags().Lookup(argResource))
 
-	syncDataCmd.PersistentFlags().StringP(argIds, argIdsShort, "", argIdsUsage)
-	viper.BindPFlag(argIds, syncDataCmd.PersistentFlags().Lookup(argIds))
+	syncDataCmd.PersistentFlags().StringVarP(&idsOpt, argIds, argIdsShort, "", argIdsUsage)
+	syncDataCmd.PersistentFlags().BoolVarP(&runQueueWorkerOpt, argRunQueueWorker, argRunQueueWorkerShort, false, argRunQueueWorkerUsage)
 
 	return &SyncDataCmd{
 		cmd: syncDataCmd,
@@ -55,7 +65,7 @@ func (s *SyncDataCmd) Cmd() *cobra.Command {
 var syncDataCmd = &cobra.Command{
 	Use: "sync:data",
 	Run: func(cmd *cobra.Command, args []string) {
-		ctx := context.Background()
+		ctx := cmd.Context()
 
 		conn, err := amqp.Dial(viper.GetString(argRabbitmqConnString))
 		failOnError(err, "Failed to connect to RabbitMQ")
@@ -65,13 +75,36 @@ var syncDataCmd = &cobra.Command{
 		failOnError(err, "Failed to connect to Postgres")
 		defer dbconn.Close()
 
+		var workerDoneCh <-chan any
+		var queueWorker *queue.Worker
+		if runQueueWorkerOpt {
+			workerDoneCh, queueWorker = startQueueWorker(ctx, conn, true)
+		}
+
 		resourceFilter := viper.GetString(argResource)
-		idsFilter := viper.GetString(argIds)
 
 		exporter := sync.NewExporter(conn, getSyncDataPlugins(dbconn, resourceFilter))
-		err = exporter.Export(ctx, getIDs(idsFilter))
+		err = exporter.Export(ctx, getIDs(idsOpt))
 		failOnError(err, "Failed to export data to rabbitmq")
+
+		if runQueueWorkerOpt {
+			queueWorker.SetDaemonMode(false)
+			<-workerDoneCh
+		}
 	},
+}
+
+func startQueueWorker(ctx context.Context, conn *amqp.Connection, daemonMode bool) (<-chan any, *queue.Worker) {
+	done := make(chan any)
+	queues := viper.GetStringSlice(queueNamesKey)
+	worker := queue.NewWorker(conn, queues, daemonMode)
+
+	go func(ctx context.Context, worker *queue.Worker) {
+		worker.Execute(ctx)
+		done <- struct{}{}
+	}(ctx, worker)
+
+	return done, worker
 }
 
 func getSyncDataPlugins(dbconn *sql.DB, resourceFilter string) []sync.SyncDataPluginInterface {

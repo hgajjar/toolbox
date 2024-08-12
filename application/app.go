@@ -3,12 +3,11 @@ package application
 import (
 	"fmt"
 	"queue-worker/application/cmd"
+	"queue-worker/config"
 
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 )
-
-var cfgFile string
 
 type Toolbox struct {
 	cmd *cobra.Command
@@ -20,10 +19,11 @@ func New() *Toolbox {
 	}
 
 	cobra.OnInitialize(initConfig)
-	rootCmd.PersistentFlags().StringVarP(&cfgFile, "config", "c", "", "config file (default is config.yaml in current dir)")
+	rootCmd.PersistentFlags().StringVarP(&config.CfgFile, "config", "c", "", "config file (default is config.yaml in current dir)")
+	rootCmd.PersistentFlags().BoolVarP(&config.Verbose, "verbose", "v", false, "verbose output")
 
 	rootCmd.AddCommand(cmd.NewSyncDataCmd().Cmd())
-	rootCmd.AddCommand(cmd.QueueWorkerCmd)
+	rootCmd.AddCommand(cmd.NewQueueWorkerCmd().Cmd())
 
 	return &Toolbox{
 		cmd: rootCmd,
@@ -35,9 +35,9 @@ func (a *Toolbox) Execute() {
 }
 
 func initConfig() {
-	if cfgFile != "" {
+	if config.CfgFile != "" {
 		// Use config file from the flag.
-		viper.SetConfigFile(cfgFile)
+		viper.SetConfigFile(config.CfgFile)
 	} else {
 		// Search config in current directory with name "toolbox.yaml".
 		viper.AddConfigPath(".")

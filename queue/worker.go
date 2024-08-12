@@ -1,6 +1,7 @@
 package queue
 
 import (
+	"context"
 	"fmt"
 	"io"
 	"log"
@@ -14,20 +15,31 @@ import (
 )
 
 type Worker struct {
-	channel *amqp.Channel
-	queues  []string
+	conn       *amqp.Connection
+	queues     []string
+	daemonMode bool
 }
 
 type queueMessageMap map[string]int
 
-func NewWorker(channel *amqp.Channel, queues []string) *Worker {
+func NewWorker(conn *amqp.Connection, queues []string, daemonMode bool) *Worker {
 	return &Worker{
-		channel: channel,
-		queues:  queues,
+		conn:       conn,
+		queues:     queues,
+		daemonMode: daemonMode,
 	}
 }
 
-func (w *Worker) Execute() {
+func (w *Worker) Execute(ctx context.Context) {
+	go func(ctx context.Context) {
+		for {
+			select {
+			case <-ctx.Done():
+				w.daemonMode = false
+			}
+		}
+	}(ctx)
+
 	qMap := w.initQueueMessageMap()
 
 	queueWrite := sync.RWMutex{}
@@ -41,7 +53,7 @@ func (w *Worker) Execute() {
 
 		go func(queue string) {
 			defer wg.Done()
-			w.startQueueProcess(queue, w.channel, qMap, &queueWrite)
+			w.startQueueProcess(queue, qMap, &queueWrite)
 		}(queue)
 	}
 
@@ -57,6 +69,10 @@ func (w *Worker) Execute() {
 	w.printStats(qMap, writer)
 
 	writer.Stop()
+}
+
+func (w *Worker) SetDaemonMode(mode bool) {
+	w.daemonMode = mode
 }
 
 func (w *Worker) printStats(queues queueMessageMap, wr io.Writer) {
@@ -79,9 +95,13 @@ func (w *Worker) sortMapKeys(queues queueMessageMap) []string {
 	return keys
 }
 
-func (w *Worker) startQueueProcess(queue string, ch *amqp.Channel, queues queueMessageMap, queueWrite *sync.RWMutex) {
+func (w *Worker) startQueueProcess(queue string, queues queueMessageMap, queueWrite *sync.RWMutex) {
+	rmqChannel, err := w.conn.Channel()
+	w.failOnError(err, "Failed to open a rabbitmq channel")
+	defer rmqChannel.Close()
+
 	for {
-		q, err := ch.QueueDeclarePassive(
+		q, err := rmqChannel.QueueDeclarePassive(
 			queue,
 			false,
 			false,
@@ -98,7 +118,11 @@ func (w *Worker) startQueueProcess(queue string, ch *amqp.Channel, queues queueM
 		if q.Messages > 0 {
 			w.triggerQueueProcess(queue)
 		} else {
-			return
+			if w.daemonMode {
+				time.Sleep(time.Millisecond * 100)
+			} else {
+				return
+			}
 		}
 	}
 }
