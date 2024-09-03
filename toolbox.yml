@@ -2,9 +2,9 @@ rabbitmq:
   connection-string: amqp://spryker:spryker@localhost:5672/
 postgres:
   connection-string: postgres://spryker:spryker@localhost:5432/spryker?sslmode=disable
+consoleCmdPrefix: "ws exec"
+consoleCmdDir: "/Users/hardikgajjar/htdocs/lautsprecher-teufel"  
 worker:
-  consoleCmdPrefix: "ws exec console"
-  consoleCmdDir: "/Users/hardikgajjar/htdocs/lautsprecher-teufel"
   queues:
     - "sync.storage.product"
     - "sync.search.product"

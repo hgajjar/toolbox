@@ -2,8 +2,8 @@ package cmd
 
 import (
 	"os"
-	"queue-worker/config"
-	"queue-worker/queue"
+	"toolbox/config"
+	"toolbox/queue"
 
 	amqp "github.com/rabbitmq/amqp091-go"
 	"github.com/rs/zerolog"

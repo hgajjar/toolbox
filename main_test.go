@@ -2,8 +2,8 @@ package main
 
 import (
 	"os"
-	"queue-worker/application"
 	"testing"
+	"toolbox/application"
 )
 
 func TestApp(t *testing.T) {

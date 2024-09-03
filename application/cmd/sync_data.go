@@ -5,13 +5,13 @@ import (
 	"database/sql"
 	"log"
 	"os"
-	"queue-worker/config"
-	syncData "queue-worker/data/sync"
-	"queue-worker/queue"
-	"queue-worker/sync"
-	"queue-worker/sync/plugin"
 	"strconv"
 	"strings"
+	"toolbox/config"
+	syncData "toolbox/data/sync"
+	"toolbox/queue"
+	"toolbox/sync"
+	"toolbox/sync/plugin"
 
 	_ "github.com/lib/pq"
 	amqp "github.com/rabbitmq/amqp091-go"
@@ -32,7 +32,7 @@ If not, full export will be executed.
 	argIdsUsage = `Defines ids for entities which should be exported, if there is more than one, use comma to separate them.
 If not, full export will be executed.`
 
-	argRunQueueWorker      = "run-queue-worker"
+	argRunQueueWorker      = "run-toolbox"
 	argRunQueueWorkerShort = "q"
 	argRunQueueWorkerUsage = `Run queue workers in the background.`
 

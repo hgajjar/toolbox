@@ -2,8 +2,8 @@ package application
 
 import (
 	"fmt"
-	"queue-worker/application/cmd"
-	"queue-worker/config"
+	"toolbox/application/cmd"
+	"toolbox/config"
 
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
@@ -24,6 +24,7 @@ func New() *Toolbox {
 
 	rootCmd.AddCommand(cmd.NewSyncDataCmd().Cmd())
 	rootCmd.AddCommand(cmd.NewQueueWorkerCmd().Cmd())
+	rootCmd.AddCommand(cmd.NewInstallCmd().Cmd())
 
 	return &Toolbox{
 		cmd: rootCmd,

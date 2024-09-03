@@ -1,0 +1,333 @@
+# sections:
+#   test:
+#     commands:
+#       import-teufel-product-stock:
+#         command: "vendor/bin/console bc-middleware:process:run -p BC_PRODUCT_STOCK_IMPORT_PROCESS -t {\"process_type\":\"FULL\",\"read_stream_type\":\"FILE\"}"
+env:
+  APPLICATION_ENV: development
+
+command-timeout: 3600
+
+sections:
+#  environment:
+#    commands:
+#      console-environment:
+#        command: "if [ ! -f ./config/Shared/console_env_local.php ]; then cp ./config/Shared/console_env_local.dist.php ./config/Shared/console_env_local.php ; fi"
+
+  clear:
+    commands:
+      parallel: true
+
+      remove-logs:
+        command: "vendor/bin/console log:clear"
+
+      remove-cache:
+        command: "vendor/bin/console cache:empty-all"
+
+      remove-auto-completion:
+        command: "vendor/bin/console dev:ide-auto-completion:remove"
+
+      remove-navigation-cache:
+        command: "vendor/bin/console navigation:cache:remove"
+
+      remove-source-map:
+        command: "vendor/bin/console search:source-map:remove"
+        depends: [remove-cache]
+
+      remove-databuilder:
+        command: "vendor/bin/console transfer:databuilder:remove"
+
+      remove-entity-transfer:
+        command: "vendor/bin/console transfer:entity:remove"
+
+      remove-transfer:
+        command: "vendor/bin/console transfer:remove"
+
+      remove-phpmd-cache:
+        command: "rm -rf ~/.pdepend/*"
+
+  generate:
+    commands:
+      parallel: true
+
+      prepare-propel:
+        command: "vendor/bin/console propel:deploy:prepare"
+
+      generate-transfers:
+        command: "vendor/bin/console transfer:generate"
+
+      generate-entity-transfers:
+        command: "vendor/bin/console transfer:entity:generate"
+
+      setup-search-create-source-map:
+        command: "vendor/bin/console search:setup:source-map"
+        depends: [generate-transfers]
+        groups:
+          - elastic
+
+      generate-transfer-databuilders:
+        command: "vendor/bin/console transfer:databuilder:generate"
+
+      generate-ide-auto-completion:
+        command: "vendor/bin/console dev:ide-auto-completion:generate"
+        depends: [generate-transfers]
+
+  cache:
+    commands:
+      parallel: true
+
+      class-resolver-build:
+        command: "vendor/bin/console cache:class-resolver:build"
+
+      router-cache-warmup-yves:
+        command: "vendor/bin/yves router:cache:warm-up"
+
+      router-cache-warmup-zed-backoffice:
+        command: "vendor/bin/console router:cache:warm-up:backoffice"
+
+      router-cache-warmup-zed-gateway:
+        command: "vendor/bin/console router:cache:warm-up:backend-gateway"
+
+      twig-cache-warmup:
+        command: "vendor/bin/console twig:cache:warmer"
+
+      navigation-cache-warmup:
+        command: "vendor/bin/console navigation:build-cache"
+
+  queue-flush:
+    commands:
+      parallel: true
+      
+      set-permissions:
+        command: "vendor/bin/console queue:permission:set"
+
+      purge-all-queues:
+        command: "vendor/bin/console queue:queue:purge-all"
+
+  database-flush:
+    commands:
+      parallel: true
+
+      delete-elastic-search-index:
+        command: "vendor/bin/console search:index:delete"
+        groups: [elastic]
+
+      delete-storage:
+        command: "vendor/bin/console storage:delete"
+        groups: [redis]
+
+      drop-database:
+        command: "vendor/bin/console propel:database:drop"
+        groups: [propel]
+
+  database-migrate:
+    commands:
+      parallel: true
+
+      propel-create:
+        command: "vendor/bin/console propel:database:create"
+        groups: [propel]
+
+      propel-postgres-compatibility:
+        command: "vendor/bin/console propel:pg-sql-compat"
+        depends: [propel-create]
+        groups: [propel]
+
+      propel-copy-schema:
+        command: "vendor/bin/console propel:schema:copy"
+        groups: [propel]
+
+      propel-build:
+        command: "vendor/bin/console propel:model:build"
+        depends: [propel-copy-schema]
+        groups: [propel]
+
+      propel-migration-check:
+        command: "vendor/bin/console propel:migration:check"
+        depends: [propel-create]
+        breakOnFailure: false
+        groups: [propel]
+
+      propel-migrate:
+        command: "vendor/bin/console propel:migrate"
+        depends: [propel-migration-check]
+        groups: [propel]
+
+      generate-entity-transfer:
+        command: "vendor/bin/console transfer:entity:generate"
+
+      init-database:
+        command: "vendor/bin/console setup:init-db"
+        depends: [propel-migrate]
+
+      setup-search-create-sources:
+        command: "vendor/bin/console search:setup:sources"
+        groups:
+          - elastic
+
+      setup-search-create-source-map:
+        command: "vendor/bin/console search:setup:source-map"
+        groups:
+          - elastic
+
+  feature-flags:
+    commands:
+      parallel: false
+
+      enable-all-custom-feature-flags:
+        command: "vendor/bin/console feature-flags:bulk-set custom"
+        env: [local]
+
+  demodata:
+    commands:
+      parallel: true
+
+      import-slot-templates:
+        command: "vendor/bin/console data:import:slot-template -t --no-events"
+
+      import-pre-middleware:
+        command: "vendor/bin/console data:import -t -c data/import/pre_middleware.yml --no-events"
+
+      import-teufel-tax:
+        command: "vendor/bin/console bc-middleware:process:run -p BC_TAX_IMPORT_PROCESS -t {\"process_type\":\"FULL\",\"read_stream_type\":\"FILE\"}"
+        depends: [import-pre-middleware]
+
+      import-teufel-attributes:
+        command: "vendor/bin/console bc-middleware:process:run -p BC_ATTRIBUTE_IMPORT_PROCESS -t {\"process_type\":\"FULL\",\"read_stream_type\":\"FILE\"}"
+        depends: [import-pre-middleware]
+
+      import-teufel-product-abstract:
+        command: "vendor/bin/console bc-middleware:process:run -p BC_PRODUCT_ABSTRACT_IMPORT_PROCESS -t {\"process_type\":\"FULL\",\"read_stream_type\":\"FILE\"}"
+        depends: [import-teufel-attributes]
+
+      import-teufel-product-conncrete:
+        command: "vendor/bin/console bc-middleware:process:run -p BC_PRODUCT_CONCRETE_IMPORT_PROCESS -t {\"process_type\":\"FULL\",\"read_stream_type\":\"FILE\"}"
+        depends: [import-teufel-product-abstract]
+
+      activate-teufel-products:
+        command: "vendor/bin/console product:activate-all-products"
+        depends: [import-teufel-product-conncrete]
+
+      import-product-label:
+        command: "vendor/bin/console data:import:product-label -t --no-events"
+        depends: [import-teufel-product-conncrete]
+
+      import-product-discontinued:
+        command: "bin/stores-runner -c \"data:import:product-discontinued\""
+        depends: [import-teufel-product-conncrete]
+        # stores: true
+        # ignore-global-store: true
+
+      import-teufel-product-editorial-properties:
+        command: "vendor/bin/console middleware:process:run -p product-editorial-property"
+        depends: [import-teufel-product-conncrete]
+
+      import-teufel-product-category:
+        command: "vendor/bin/console middleware:process:run -p product-category"
+        depends: [import-teufel-product-conncrete]
+
+      import-teufel-product-stock:
+        command: "vendor/bin/console bc-middleware:process:run -p BC_PRODUCT_STOCK_IMPORT_PROCESS -t {\"process_type\":\"FULL\",\"read_stream_type\":\"FILE\"}"
+        depends: [import-teufel-product-conncrete]
+
+      import-teufel-product-price:
+        command: "vendor/bin/console bc-middleware:process:run -p BC_PRODUCT_PRICE_IMPORT_PROCESS -t {\"process_type\":\"FULL\",\"read_stream_type\":\"FILE\"}"
+        depends: [import-teufel-product-conncrete]
+
+      import-teufel-product-shipment-profile:
+        command: "vendor/bin/console bc-middleware:process:run -p BC_PRODUCT_SHIPMENT_PROFILE_IMPORT_PROCESS -t {\"process_type\":\"FULL\",\"read_stream_type\":\"FILE\"}"
+        depends: [import-teufel-product-conncrete]
+
+      import-teufel-product-url:
+        command: "bin/stores-runner -c \"middleware:process:run -p product-url -i all -vvv\""
+        depends: [import-teufel-product-conncrete]
+        # stores: true
+        # ignore-global-store: true
+
+      import-teufel-image-assets:
+        command: "vendor/bin/console middleware:process:run -p image-assets"
+        depends: [import-teufel-product-conncrete]
+
+      import-teufel-pdf-assets:
+        command: "vendor/bin/console middleware:process:run -p pdf-assets"
+        depends: [import-teufel-product-conncrete]
+
+      import-teufel-product-assets:
+        command: "vendor/bin/console middleware:process:run -p product-assets"
+        depends: [import-teufel-product-conncrete]
+
+      import-teufel-product-gallery:
+        command: "vendor/bin/console middleware:process:run -p product-gallery"
+        depends: [import-teufel-product-conncrete]
+
+      import-teufel-product-video:
+        command: "vendor/bin/console middleware:process:run -p product-video"
+        depends: [import-teufel-product-conncrete]
+
+      import-teufel-customer-addresses:
+        command: "vendor/bin/console middleware:process:run -p customer_addresses"
+        depends: [import-pre-middleware]
+
+      import-teufel-product-relations:
+        command: "vendor/bin/console bc-middleware:process:run -p BC_PRODUCT_RELATIONS_IMPORT_PROCESS -t {\"process_type\":\"FULL\",\"read_stream_type\":\"FILE\"}"
+        depends: [import-teufel-product-conncrete]
+
+      import-teufel-magazine-review:
+        command: "vendor/bin/console middleware:process:run -p magazine-review"
+        depends: [import-pre-middleware]
+
+      import-teufel-magazine-review-attribute:
+        command: "vendor/bin/console middleware:process:run -p magazine-review-attribute"
+        depends: [import-teufel-magazine-review]
+
+      import-teufel-magazine-review-product:
+        command: "vendor/bin/console middleware:process:run -p magazine-review-product"
+        depends: [import-teufel-product-conncrete, import-teufel-magazine-review]
+
+      import-teufel-customer-review:
+        command: "vendor/bin/console middleware:process:run -p customer-review"
+        depends: [import-pre-middleware]
+
+      import-teufel-customer-review-attribute:
+        command: "vendor/bin/console middleware:process:run -p customer-review-attribute"
+        depends: [import-teufel-customer-review]
+
+      import-firstnames:
+        command: "vendor/bin/console middleware:process:run -p firstnames"
+        depends: [import-pre-middleware]
+
+      import-post-middleware:
+        command: "vendor/bin/console data:import -t -c data/import/post_middleware.yml --no-events"
+        depends: ['*']
+
+  toolbox:
+    commands:
+      parallel: false
+
+      purge-queues:
+        command: "vendor/bin/console queue:queue:purge-all"
+      manual-trigger:
+  #      pre: "queue-flush/purge-all-queues"
+        command: "vendor/bin/console publish:trigger-events"
+      run:
+        command: "vendor/bin/console queue:worker:start --stop-when-empty"
+
+  frontend:
+    async: true
+
+    commands:
+      parallel: true
+      
+      dependencies-install:
+        command: "vendor/bin/console frontend:project:install-dependencies -vvv"
+        groups: [project]
+
+      yves-build-frontend:
+        command: "vendor/bin/console frontend:yves:build"
+        depends: [dependencies-install]
+        groups: [yves]
+
+      zed-build-frontend:
+        command: "vendor/bin/console frontend:zed:build"
+        depends: [dependencies-install]
+        groups: [zed]

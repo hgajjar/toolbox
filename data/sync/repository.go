@@ -5,9 +5,9 @@ import (
 	"database/sql"
 	"fmt"
 	"log"
-	"queue-worker/config"
-	"queue-worker/data"
 	"strings"
+	"toolbox/config"
+	"toolbox/data"
 
 	"github.com/lib/pq"
 )

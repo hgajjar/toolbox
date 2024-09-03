@@ -1,7 +1,7 @@
 package main
 
 import (
-	"queue-worker/application"
+	"toolbox/application"
 )
 
 var toolbox *application.Toolbox

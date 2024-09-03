@@ -2,10 +2,10 @@ package plugin
 
 import (
 	"context"
-	"queue-worker/config"
-	"queue-worker/data"
-	syncData "queue-worker/data/sync"
-	"queue-worker/sync"
+	"toolbox/config"
+	"toolbox/data"
+	syncData "toolbox/data/sync"
+	"toolbox/sync"
 )
 
 func castToMappingEntities[T sync.MappingInterface](entities []T) []sync.MappingInterface {

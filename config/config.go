@@ -4,3 +4,8 @@ var (
 	CfgFile string
 	Verbose bool
 )
+
+const (
+	ConsoleCmdPrefixKey = "consoleCmdPrefix"
+	ConsoleCmdDirKey    = "consoleCmdDir"
+)

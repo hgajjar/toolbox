@@ -10,16 +10,12 @@ import (
 	"strings"
 	"sync"
 	"time"
+	"toolbox/config"
 
 	"github.com/gosuri/uilive"
 	amqp "github.com/rabbitmq/amqp091-go"
 	"github.com/rs/zerolog"
 	"github.com/spf13/viper"
-)
-
-const (
-	consoleCmdPrefixKey = "worker.consoleCmdPrefix"
-	consoleCmdDirKey    = "worker.consoleCmdDir"
 )
 
 type Worker struct {
@@ -37,8 +33,8 @@ func NewWorker(conn *amqp.Connection, queues []string, daemonMode bool) *Worker 
 		conn:             conn,
 		queues:           queues,
 		daemonMode:       daemonMode,
-		consoleCmdPrefix: strings.Split(viper.GetString(consoleCmdPrefixKey), " "),
-		consoleCmdDir:    viper.GetString(consoleCmdDirKey),
+		consoleCmdPrefix: strings.Split(viper.GetString(config.ConsoleCmdPrefixKey), " "),
+		consoleCmdDir:    viper.GetString(config.ConsoleCmdDirKey),
 	}
 }
 
@@ -140,10 +136,10 @@ func (w *Worker) startQueueProcess(ctx context.Context, queue string, queues que
 }
 
 func (w *Worker) triggerQueueProcess(ctx context.Context, queue string) {
-	cmdArgs := append(w.consoleCmdPrefix, "queue:task:start", queue)
+	cmdArgs := append(w.consoleCmdPrefix, "vendor/bin/console", "queue:task:start", queue)
 
 	cmd := exec.CommandContext(ctx, cmdArgs[0], cmdArgs[1:]...)
-	cmd.Dir = viper.GetString(consoleCmdDirKey)
+	cmd.Dir = w.consoleCmdDir
 
 	if op, err := cmd.Output(); err != nil {
 		fmt.Println(string(op))
