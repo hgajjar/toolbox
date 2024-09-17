@@ -50,40 +50,50 @@ func (w *Worker) Execute(ctx context.Context) {
 
 	qMap := w.initQueueMessageMap()
 
-	queueWrite := sync.RWMutex{}
+	queueMapLock := sync.RWMutex{}
 	var wg sync.WaitGroup
 
 	writer := uilive.New()
-	writer.Start()
+
+	if config.Verbose {
+		writer.Start()
+	}
 
 	for queue := range qMap {
 		wg.Add(1)
 
 		go func(ctx context.Context, queue string) {
 			defer wg.Done()
-			w.startQueueProcess(ctx, queue, qMap, &queueWrite)
+			w.startQueueProcess(ctx, queue, qMap, &queueMapLock)
 		}(ctx, queue)
 	}
 
-	go func() {
-		for {
-			w.printStats(qMap, writer)
-			time.Sleep(time.Millisecond * 500)
-		}
-	}()
+	if config.Verbose {
+		go func() {
+			for {
+				w.printStats(qMap, writer, &queueMapLock)
+				time.Sleep(time.Millisecond * 500)
+			}
+		}()
+	}
 
 	wg.Wait()
 
-	w.printStats(qMap, writer)
+	if config.Verbose {
+		w.printStats(qMap, writer, &queueMapLock)
 
-	writer.Stop()
+		writer.Stop()
+	}
 }
 
 func (w *Worker) SetDaemonMode(mode bool) {
 	w.daemonMode = mode
 }
 
-func (w *Worker) printStats(queues queueMessageMap, wr io.Writer) {
+func (w *Worker) printStats(queues queueMessageMap, wr io.Writer, queueMapLock *sync.RWMutex) {
+	queueMapLock.RLock()
+	defer queueMapLock.RUnlock()
+
 	var message string
 	for _, key := range w.sortMapKeys(queues) {
 		message += fmt.Sprintf("Messages: %d [%s]\n", queues[key], key)
@@ -103,10 +113,12 @@ func (w *Worker) sortMapKeys(queues queueMessageMap) []string {
 	return keys
 }
 
-func (w *Worker) startQueueProcess(ctx context.Context, queue string, queues queueMessageMap, queueWrite *sync.RWMutex) {
+func (w *Worker) startQueueProcess(ctx context.Context, queue string, queues queueMessageMap, queueMapLock *sync.RWMutex) {
 	rmqChannel, err := w.conn.Channel()
 	w.failOnError(ctx, err, "Failed to open a rabbitmq channel")
 	defer rmqChannel.Close()
+
+	var i int
 
 	for {
 		q, err := rmqChannel.QueueDeclarePassive(
@@ -119,9 +131,9 @@ func (w *Worker) startQueueProcess(ctx context.Context, queue string, queues que
 		)
 		w.failOnError(ctx, err, "Failed to declare a queue")
 
-		queueWrite.Lock()
+		queueMapLock.Lock()
 		queues[queue] = q.Messages
-		queueWrite.Unlock()
+		queueMapLock.Unlock()
 
 		if q.Messages > 0 {
 			w.triggerQueueProcess(ctx, queue)
@@ -129,14 +141,42 @@ func (w *Worker) startQueueProcess(ctx context.Context, queue string, queues que
 			if w.daemonMode {
 				time.Sleep(time.Millisecond * 100)
 			} else {
-				return
+				if i == 0 {
+					// wait once if there are any messages added in queue after it's started
+					i++
+					time.Sleep(time.Second * 1)
+				}
+
+				if w.areAllQueuesEmpty(queues, queueMapLock) {
+					return
+				}
+
+				time.Sleep(time.Millisecond * 100)
 			}
 		}
 	}
 }
 
+func (w *Worker) areAllQueuesEmpty(queues queueMessageMap, queueMapLock *sync.RWMutex) bool {
+	queueMapLock.RLock()
+	defer queueMapLock.RUnlock()
+
+	for _, messageCount := range queues {
+		if messageCount > 0 {
+			return false
+		}
+	}
+
+	return true
+}
+
 func (w *Worker) triggerQueueProcess(ctx context.Context, queue string) {
-	cmdArgs := append(w.consoleCmdPrefix, "vendor/bin/console", "queue:task:start", queue)
+	var cmdArgs []string
+	if w.consoleCmdPrefix[0] != "" {
+		cmdArgs = append(cmdArgs, w.consoleCmdPrefix...)
+	}
+
+	cmdArgs = append(cmdArgs, "vendor/bin/console", "queue:task:start", queue)
 
 	cmd := exec.CommandContext(ctx, cmdArgs[0], cmdArgs[1:]...)
 	cmd.Dir = w.consoleCmdDir
