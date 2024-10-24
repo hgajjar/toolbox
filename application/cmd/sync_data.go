@@ -32,7 +32,7 @@ If not, full export will be executed.
 	argIdsUsage = `Defines ids for entities which should be exported, if there is more than one, use comma to separate them.
 If not, full export will be executed.`
 
-	argRunQueueWorker      = "run-toolbox"
+	argRunQueueWorker      = "run-queue-worker"
 	argRunQueueWorkerShort = "q"
 	argRunQueueWorkerUsage = `Run queue workers in the background.`
 

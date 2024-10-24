@@ -12,7 +12,7 @@ import (
 	"time"
 	"toolbox/config"
 
-	"github.com/gosuri/uilive"
+	"github.com/Adaendra/uilive"
 	amqp "github.com/rabbitmq/amqp091-go"
 	"github.com/rs/zerolog"
 	"github.com/spf13/viper"
@@ -54,10 +54,7 @@ func (w *Worker) Execute(ctx context.Context) {
 	var wg sync.WaitGroup
 
 	writer := uilive.New()
-
-	if config.Verbose {
-		writer.Start()
-	}
+	writer.Start()
 
 	for queue := range qMap {
 		wg.Add(1)
@@ -69,21 +66,21 @@ func (w *Worker) Execute(ctx context.Context) {
 	}
 
 	if config.Verbose {
-		go func() {
+		go func(qMap queueMessageMap, writer io.Writer, queueMapLock *sync.RWMutex) {
 			for {
-				w.printStats(qMap, writer, &queueMapLock)
+				w.printStats(qMap, writer, queueMapLock)
 				time.Sleep(time.Millisecond * 500)
 			}
-		}()
+		}(qMap, writer, &queueMapLock)
 	}
 
 	wg.Wait()
 
 	if config.Verbose {
 		w.printStats(qMap, writer, &queueMapLock)
-
-		writer.Stop()
 	}
+
+	writer.Stop()
 }
 
 func (w *Worker) SetDaemonMode(mode bool) {
