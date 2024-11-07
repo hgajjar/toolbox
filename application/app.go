@@ -24,7 +24,7 @@ func New() *Toolbox {
 
 	rootCmd.AddCommand(cmd.NewSyncDataCmd().Cmd())
 	rootCmd.AddCommand(cmd.NewQueueWorkerCmd().Cmd())
-	rootCmd.AddCommand(cmd.NewInstallCmd().Cmd())
+	// rootCmd.AddCommand(cmd.NewInstallCmd().Cmd())
 
 	return &Toolbox{
 		cmd: rootCmd,
