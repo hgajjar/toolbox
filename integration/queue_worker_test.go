@@ -152,7 +152,7 @@ func setupRabbitMqService(ctx context.Context) (func(), string, error) {
 		return deferFn, "", errors.Wrap(err, "failed to start rabbitmq container")
 	}
 
-	time.Sleep(3 * time.Second) //there is no healthcheck for rabbitmq
+	time.Sleep(10 * time.Second) //there is no healthcheck for rabbitmq
 
 	info, err := dockerClient.ContainerInspect(ctx, resp.ID)
 	if err != nil {
