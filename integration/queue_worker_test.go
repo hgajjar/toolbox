@@ -6,7 +6,6 @@ package integration
 import (
 	"context"
 	"fmt"
-	"io"
 	"testing"
 	"time"
 	"toolbox/config"
@@ -121,13 +120,10 @@ func setupRabbitMqService(ctx context.Context) (func(), string, error) {
 		dockerClient.Close()
 	}
 
-	imagePullResp, err := dockerClient.ImagePull(ctx, rmqDockerImage, image.PullOptions{})
+	_, err = dockerClient.ImagePull(ctx, rmqDockerImage, image.PullOptions{})
 	if err != nil {
 		return deferFn, "", errors.Wrap(err, "failed to pull rabbitmq image")
 	}
-	defer imagePullResp.Close()
-	imagePullRespStr, _ := io.ReadAll(imagePullResp)
-	fmt.Println(string(imagePullRespStr))
 
 	resp, err := dockerClient.ContainerCreate(ctx, &container.Config{
 		Image:        rmqDockerImage,
@@ -158,6 +154,8 @@ func setupRabbitMqService(ctx context.Context) (func(), string, error) {
 	if err != nil {
 		return deferFn, "", errors.Wrap(err, "failed to inspect rabbitmq container")
 	}
+	fmt.Printf("%#v\n", info.NetworkSettings)
+	fmt.Printf("%#v\n", info.ContainerJSONBase.State)
 
 	return deferFn, info.NetworkSettings.Ports["5672/tcp"][0].HostPort, nil
 }
