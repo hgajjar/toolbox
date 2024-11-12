@@ -2,6 +2,7 @@ package cmd
 
 import (
 	"os"
+	"strings"
 	"toolbox/config"
 	"toolbox/queue"
 
@@ -58,7 +59,10 @@ var queueWorkerCmd = &cobra.Command{
 
 		queues := viper.GetStringSlice(queueNamesKey)
 
-		worker := queue.NewWorker(conn, queues, daemonModeOpt)
+		cmdPrefix := strings.Split(viper.GetString(config.ConsoleCmdPrefixKey), " ")
+		cmdDir := viper.GetString(config.ConsoleCmdDirKey)
+		consoleCmd := strings.Split(viper.GetString(config.ConsoleCmdKey), " ")
+		worker := queue.NewWorker(conn, queues, daemonModeOpt, cmdPrefix, cmdDir, consoleCmd)
 		worker.Execute(ctx)
 	},
 }

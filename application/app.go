@@ -1,25 +1,31 @@
 package application
 
 import (
+	"bytes"
 	"fmt"
 	"toolbox/application/cmd"
 	"toolbox/config"
 
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
+
+	_ "embed"
 )
+
+var defaultConfig []byte
 
 type Toolbox struct {
 	cmd *cobra.Command
 }
 
-func New() *Toolbox {
+func New(defaultConf []byte) *Toolbox {
 	rootCmd := &cobra.Command{
 		Use: "toolbox",
 	}
+	defaultConfig = defaultConf
 
 	cobra.OnInitialize(initConfig)
-	rootCmd.PersistentFlags().StringVarP(&config.CfgFile, "config", "c", "", "config file (default is config.yaml in current dir)")
+	rootCmd.PersistentFlags().StringVarP(&config.CfgFile, "config", "c", "", "config file (default is toolbox.yml in current dir)")
 	rootCmd.PersistentFlags().BoolVarP(&config.Verbose, "verbose", "v", false, "verbose output")
 
 	rootCmd.AddCommand(cmd.NewSyncDataCmd().Cmd())
@@ -49,7 +55,9 @@ func initConfig() {
 	viper.AutomaticEnv()
 
 	if err := viper.ReadInConfig(); err != nil {
-		cobra.CheckErr(err)
+		if err := viper.ReadConfig(bytes.NewReader(defaultConfig)); err != nil {
+			cobra.CheckErr(err)
+		}
 	}
 
 	fmt.Println("Using config file:", viper.ConfigFileUsed())

@@ -8,4 +8,5 @@ var (
 const (
 	ConsoleCmdPrefixKey = "consoleCmdPrefix"
 	ConsoleCmdDirKey    = "consoleCmdDir"
+	ConsoleCmdKey       = "consoleCmd"
 )

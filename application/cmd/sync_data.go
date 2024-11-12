@@ -107,7 +107,10 @@ var syncDataCmd = &cobra.Command{
 func startQueueWorker(ctx context.Context, conn *amqp.Connection, daemonMode bool) (<-chan any, *queue.Worker) {
 	done := make(chan any)
 	queues := viper.GetStringSlice(queueNamesKey)
-	worker := queue.NewWorker(conn, queues, daemonMode)
+	cmdPrefix := strings.Split(viper.GetString(config.ConsoleCmdPrefixKey), " ")
+	cmdDir := viper.GetString(config.ConsoleCmdDirKey)
+	consoleCmd := strings.Split(viper.GetString(config.ConsoleCmdKey), " ")
+	worker := queue.NewWorker(conn, queues, daemonMode, cmdPrefix, cmdDir, consoleCmd)
 
 	go func(ctx context.Context, worker *queue.Worker) {
 		worker.Execute(ctx)

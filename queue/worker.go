@@ -4,18 +4,16 @@ import (
 	"context"
 	"fmt"
 	"io"
-	"log"
 	"os/exec"
 	"sort"
-	"strings"
 	"sync"
 	"time"
 	"toolbox/config"
 
 	"github.com/Adaendra/uilive"
+	"github.com/pkg/errors"
 	amqp "github.com/rabbitmq/amqp091-go"
 	"github.com/rs/zerolog"
-	"github.com/spf13/viper"
 )
 
 type Worker struct {
@@ -24,17 +22,19 @@ type Worker struct {
 	daemonMode       bool
 	consoleCmdPrefix []string
 	consoleCmdDir    string
+	consoleCmd       []string
 }
 
 type queueMessageMap map[string]int
 
-func NewWorker(conn *amqp.Connection, queues []string, daemonMode bool) *Worker {
+func NewWorker(conn *amqp.Connection, queues []string, daemonMode bool, cmdPrefix []string, cmdDir string, cmd []string) *Worker {
 	return &Worker{
 		conn:             conn,
 		queues:           queues,
 		daemonMode:       daemonMode,
-		consoleCmdPrefix: strings.Split(viper.GetString(config.ConsoleCmdPrefixKey), " "),
-		consoleCmdDir:    viper.GetString(config.ConsoleCmdDirKey),
+		consoleCmdPrefix: cmdPrefix,
+		consoleCmdDir:    cmdDir,
+		consoleCmd:       cmd,
 	}
 }
 
@@ -61,7 +61,10 @@ func (w *Worker) Execute(ctx context.Context) {
 
 		go func(ctx context.Context, queue string) {
 			defer wg.Done()
-			w.startQueueProcess(ctx, queue, qMap, &queueMapLock)
+			err := w.startQueueProcess(ctx, queue, qMap, &queueMapLock)
+			if err != nil {
+				zerolog.Ctx(ctx).Error().Stack().Err(err).Msg(err.Error())
+			}
 		}(ctx, queue)
 	}
 
@@ -110,9 +113,11 @@ func (w *Worker) sortMapKeys(queues queueMessageMap) []string {
 	return keys
 }
 
-func (w *Worker) startQueueProcess(ctx context.Context, queue string, queues queueMessageMap, queueMapLock *sync.RWMutex) {
+func (w *Worker) startQueueProcess(ctx context.Context, queue string, queues queueMessageMap, queueMapLock *sync.RWMutex) error {
 	rmqChannel, err := w.conn.Channel()
-	w.failOnError(ctx, err, "Failed to open a rabbitmq channel")
+	if err != nil {
+		return errors.Wrap(err, "Failed to open a rabbitmq channel")
+	}
 	defer rmqChannel.Close()
 
 	var i int
@@ -126,14 +131,19 @@ func (w *Worker) startQueueProcess(ctx context.Context, queue string, queues que
 			false,
 			nil,
 		)
-		w.failOnError(ctx, err, "Failed to declare a queue")
+		if err != nil {
+			return errors.Wrap(err, "Failed to declare a queue")
+		}
 
 		queueMapLock.Lock()
 		queues[queue] = q.Messages
 		queueMapLock.Unlock()
 
 		if q.Messages > 0 {
-			w.triggerQueueProcess(ctx, queue)
+			err := w.triggerQueueProcess(ctx, queue)
+			if err != nil {
+				return err
+			}
 		} else {
 			if w.daemonMode {
 				time.Sleep(time.Millisecond * 100)
@@ -145,7 +155,7 @@ func (w *Worker) startQueueProcess(ctx context.Context, queue string, queues que
 				}
 
 				if w.areAllQueuesEmpty(queues, queueMapLock) {
-					return
+					return nil
 				}
 
 				time.Sleep(time.Millisecond * 100)
@@ -167,21 +177,23 @@ func (w *Worker) areAllQueuesEmpty(queues queueMessageMap, queueMapLock *sync.RW
 	return true
 }
 
-func (w *Worker) triggerQueueProcess(ctx context.Context, queue string) {
+func (w *Worker) triggerQueueProcess(ctx context.Context, queue string) error {
 	var cmdArgs []string
-	if w.consoleCmdPrefix[0] != "" {
+	if len(w.consoleCmdPrefix) > 0 && w.consoleCmdPrefix[0] != "" {
 		cmdArgs = append(cmdArgs, w.consoleCmdPrefix...)
 	}
 
-	cmdArgs = append(cmdArgs, "vendor/bin/console", "queue:task:start", queue)
+	cmdArgs = append(cmdArgs, w.consoleCmd...)
+	cmdArgs = append(cmdArgs, queue)
 
 	cmd := exec.CommandContext(ctx, cmdArgs[0], cmdArgs[1:]...)
 	cmd.Dir = w.consoleCmdDir
 
 	if op, err := cmd.Output(); err != nil {
-		fmt.Println(string(op))
-		log.Fatal(err)
+		return errors.Wrap(err, "Failed to execute command: "+string(op))
 	}
+
+	return nil
 }
 
 func (w *Worker) initQueueMessageMap() queueMessageMap {
@@ -191,10 +203,4 @@ func (w *Worker) initQueueMessageMap() queueMessageMap {
 	}
 
 	return qMap
-}
-
-func (w *Worker) failOnError(ctx context.Context, err error, msg string) {
-	if err != nil {
-		zerolog.Ctx(ctx).Panic().Stack().Err(err).Msg(msg)
-	}
 }
