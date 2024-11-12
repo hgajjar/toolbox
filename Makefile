@@ -14,4 +14,5 @@ test: ## Run tests with race condition detector
 	go test -race -short ./...
 
 test-integration: ## Run integration tests
+	(cd integration/rabbitmq/consumer && go build -tags integration)
 	go test -short -tags=integration ./integration -v
