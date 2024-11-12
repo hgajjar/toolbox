@@ -14,4 +14,4 @@ test: ## Run tests with race condition detector
 	go test -race -short ./...
 
 test-integration: ## Run integration tests
-	go test -short -tags=integration ./integration
+	go test -short -tags=integration ./integration -v
