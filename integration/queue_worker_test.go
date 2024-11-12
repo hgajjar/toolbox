@@ -16,6 +16,7 @@ import (
 	"github.com/docker/docker/api/types/image"
 	"github.com/docker/docker/client"
 	"github.com/docker/go-connections/nat"
+	"github.com/pkg/errors"
 )
 
 const (
@@ -121,7 +122,7 @@ func setupRabbitMqService(ctx context.Context) (func(), string, error) {
 
 	_, err = dockerClient.ImagePull(ctx, rmqDockerImage, image.PullOptions{})
 	if err != nil {
-		return deferFn, "", err
+		return deferFn, "", errors.Wrap(err, "failed to pull rabbitmq image")
 	}
 
 	resp, err := dockerClient.ContainerCreate(ctx, &container.Config{
@@ -135,7 +136,7 @@ func setupRabbitMqService(ctx context.Context) (func(), string, error) {
 	}, nil, nil, "")
 
 	if err != nil {
-		return deferFn, "", err
+		return deferFn, "", errors.Wrap(err, "failed to create rabbitmq container")
 	}
 
 	deferFn = func() {
@@ -144,14 +145,14 @@ func setupRabbitMqService(ctx context.Context) (func(), string, error) {
 	}
 
 	if err = dockerClient.ContainerStart(ctx, resp.ID, container.StartOptions{}); err != nil {
-		return deferFn, "", err
+		return deferFn, "", errors.Wrap(err, "failed to start rabbitmq container")
 	}
 
 	time.Sleep(3 * time.Second) //there is no healthcheck for rabbitmq
 
 	info, err := dockerClient.ContainerInspect(ctx, resp.ID)
 	if err != nil {
-		return deferFn, "", err
+		return deferFn, "", errors.Wrap(err, "failed to inspect rabbitmq container")
 	}
 
 	return deferFn, info.NetworkSettings.Ports["5672/tcp"][0].HostPort, nil
