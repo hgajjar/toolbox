@@ -7,6 +7,7 @@ env:
   DARWIN_ARM64_BINARY: "toolbox-darwin-arm64"
   LINUX_AMD64_BINARY: "toolbox-linux-amd64"
   LINUX_ARM64_BINARY: "toolbox-linux-arm64"
+  DOCKER_API_VERSION: 1.45
 
 jobs:
 
