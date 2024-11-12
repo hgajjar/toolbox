@@ -125,6 +125,7 @@ func setupRabbitMqService(ctx context.Context) (func(), string, error) {
 	if err != nil {
 		return deferFn, "", errors.Wrap(err, "failed to pull rabbitmq image")
 	}
+	defer imagePullResp.Close()
 	imagePullRespStr, _ := io.ReadAll(imagePullResp)
 	fmt.Println(string(imagePullRespStr))
 
