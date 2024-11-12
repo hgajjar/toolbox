@@ -36,9 +36,7 @@ func TestQueueWorker(t *testing.T) {
 
 	config.Verbose = true
 
-	rmq, err := rabbitmq.New(rabbitmq.Config{
-		URL: fmt.Sprintf("amqp://guest:guest@127.0.0.1:%s/", hostPort),
-	})
+	rmq, err := setupRabbitMqConnection(hostPort)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -127,7 +125,6 @@ func setupRabbitMqService(ctx context.Context) (func(), string, error) {
 	}
 	defer imagePullResp.Close()
 	io.ReadAll(imagePullResp)
-	// fmt.Println(string(imagePullRespStr))
 
 	resp, err := dockerClient.ContainerCreate(ctx, &container.Config{
 		Image:        rmqDockerImage,
@@ -152,12 +149,27 @@ func setupRabbitMqService(ctx context.Context) (func(), string, error) {
 		return deferFn, "", errors.Wrap(err, "failed to start rabbitmq container")
 	}
 
-	time.Sleep(5 * time.Second) //there is no healthcheck for rabbitmq
-
 	info, err := dockerClient.ContainerInspect(ctx, resp.ID)
 	if err != nil {
 		return deferFn, "", errors.Wrap(err, "failed to inspect rabbitmq container")
 	}
 
 	return deferFn, info.NetworkSettings.Ports["5672/tcp"][0].HostPort, nil
+}
+
+func setupRabbitMqConnection(hostPort string) (*rabbitmq.Rabbitmq, error) {
+	for {
+		select {
+		case <-time.After(5 * time.Second):
+			return nil, errors.New("timed-out while waiting for rabbitmq service to start")
+		default:
+			rmq, err := rabbitmq.New(rabbitmq.Config{
+				URL: fmt.Sprintf("amqp://guest:guest@127.0.0.1:%s/", hostPort),
+			})
+			if err == nil {
+				return rmq, nil
+			}
+			time.Sleep(500 * time.Millisecond)
+		}
+	}
 }

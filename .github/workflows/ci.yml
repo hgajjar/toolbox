@@ -21,11 +21,11 @@ jobs:
       with:
         go-version: '1.23'
 
-    # - name: Build
-    #   run: |
-    #     make dep
-    #     mkdir -p build
-    #     make build
+    - name: Build
+      run: |
+        make dep
+        mkdir -p build
+        make build
 
     - name: Test
       run: |
