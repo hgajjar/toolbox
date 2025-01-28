@@ -2,3 +2,4 @@
 /*.prof
 toolbox-test.yml
 integration/rabbitmq/consumer/consumer
+build
