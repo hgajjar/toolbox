@@ -1,15 +1,14 @@
-package plugin
+package sync
 
 import (
 	"context"
 	"toolbox/config"
 	"toolbox/data"
 	syncData "toolbox/data/sync"
-	"toolbox/sync"
 )
 
-func castToMappingEntities[T sync.MappingInterface](entities []T) []sync.MappingInterface {
-	mappings := []sync.MappingInterface{}
+func castToMappingEntities[T MappingInterface](entities []T) []MappingInterface {
+	mappings := []MappingInterface{}
 	for _, e := range entities {
 		mappings = append(mappings, e)
 	}
@@ -17,8 +16,8 @@ func castToMappingEntities[T sync.MappingInterface](entities []T) []sync.Mapping
 	return mappings
 }
 
-func castChannelToSyncEntity[T sync.EntityInterface](from <-chan T) <-chan sync.EntityInterface {
-	to := make(chan sync.EntityInterface)
+func castChannelToSyncEntity[T EntityInterface](from <-chan T) <-chan EntityInterface {
+	to := make(chan EntityInterface)
 	go func() {
 		var val T
 		for {
@@ -34,14 +33,14 @@ type Sync struct {
 	config *config.SyncEntity
 }
 
-func New(repo *syncData.Repository, config *config.SyncEntity) *Sync {
+func NewPlugin(repo *syncData.Repository, config *config.SyncEntity) *Sync {
 	return &Sync{
 		repo:   repo,
 		config: config,
 	}
 }
 
-func (a *Sync) GetData(ctx context.Context, filter data.Filter) (<-chan sync.EntityInterface, error) {
+func (a *Sync) GetData(ctx context.Context, filter data.Filter) (<-chan EntityInterface, error) {
 	dataCh, err := a.repo.GetData(ctx, filter)
 	if err != nil {
 		return nil, err
@@ -54,7 +53,7 @@ func (a *Sync) GetResourceName() string {
 	return a.config.Resource
 }
 
-func (a *Sync) GetMappings() []sync.MappingInterface {
+func (a *Sync) GetMappings() []MappingInterface {
 	mappings := a.config.Mappings
 
 	return castToMappingEntities(mappings)

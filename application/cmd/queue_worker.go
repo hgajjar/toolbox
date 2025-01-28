@@ -1,13 +1,10 @@
 package cmd
 
 import (
-	"os"
 	"strings"
 	"toolbox/config"
 	"toolbox/queue"
 
-	amqp "github.com/rabbitmq/amqp091-go"
-	"github.com/rs/zerolog"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 )
@@ -43,26 +40,13 @@ func NewQueueWorkerCmd() *QueueWorkerCmd {
 var queueWorkerCmd = &cobra.Command{
 	Use: "queue:worker",
 	Run: func(cmd *cobra.Command, args []string) {
-		zerolog.SetGlobalLevel(zerolog.InfoLevel)
-		if config.Verbose {
-			zerolog.SetGlobalLevel(zerolog.DebugLevel)
-		}
-
-		logger := zerolog.New(zerolog.ConsoleWriter{Out: os.Stderr}).With().Timestamp().Logger()
-
-		// Attach the Logger to the context.Context
-		ctx := logger.WithContext(cmd.Context())
-
-		conn, err := amqp.Dial(viper.GetString(argRabbitmqConnString))
-		failOnError(err, "Failed to connect to RabbitMQ")
-		defer conn.Close()
-
+		rabbitmqConnStr := viper.GetString(argRabbitmqConnString)
 		queues := viper.GetStringSlice(queueNamesKey)
 
 		cmdPrefix := strings.Split(viper.GetString(config.ConsoleCmdPrefixKey), " ")
 		cmdDir := viper.GetString(config.ConsoleCmdDirKey)
 		consoleCmd := strings.Split(viper.GetString(config.ConsoleCmdKey), " ")
-		worker := queue.NewWorker(conn, queues, daemonModeOpt, cmdPrefix, cmdDir, consoleCmd)
-		worker.Execute(ctx)
+
+		queue.StartWorker(cmd.Context(), rabbitmqConnStr, queues, daemonModeOpt, cmdPrefix, cmdDir, consoleCmd)
 	},
 }

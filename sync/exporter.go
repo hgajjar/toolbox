@@ -99,7 +99,9 @@ func (e *Exporter) exportData(ctx context.Context, plugin SyncDataPluginInterfac
 	limit := exportChunksize
 
 	rmqChannel, err := e.conn.Channel()
-	failOnError(ctx, err, "Failed to open a rabbitmq channel")
+	if err != nil {
+		zerolog.Ctx(ctx).Panic().Stack().Err(err).Msg("Failed to open a rabbitmq channel")
+	}
 	defer rmqChannel.Close()
 
 	for {
@@ -248,14 +250,8 @@ func (e *Exporter) waitUntilConnIsUnblocked(ctx context.Context) {
 			break
 		}
 		if e.conn.IsClosed() {
-			failOnError(ctx, nil, "RabbitMQ connection is closed unexpectedly")
+			zerolog.Ctx(ctx).Warn().Msg("RabbitMQ connection is closed unexpectedly")
 		}
 		time.Sleep(rabbitMqBlockedConnWait)
-	}
-}
-
-func failOnError(ctx context.Context, err error, msg string) {
-	if err != nil {
-		zerolog.Ctx(ctx).Panic().Stack().Err(err).Msg(msg)
 	}
 }
