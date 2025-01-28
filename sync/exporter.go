@@ -5,7 +5,8 @@ import (
 	"encoding/json"
 	"fmt"
 	"time"
-	"toolbox/data"
+
+	"github.com/hgajjar/toolbox/data"
 
 	amqp "github.com/rabbitmq/amqp091-go"
 	"github.com/rs/zerolog"

@@ -2,7 +2,8 @@ package main
 
 import (
 	_ "embed"
-	"toolbox/application"
+
+	"github.com/hgajjar/toolbox/application"
 )
 
 var (

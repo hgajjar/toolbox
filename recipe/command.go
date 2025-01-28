@@ -8,7 +8,8 @@ import (
 	"log"
 	"os/exec"
 	"strings"
-	"toolbox/config"
+
+	"github.com/hgajjar/toolbox/config"
 
 	"github.com/spf13/viper"
 )

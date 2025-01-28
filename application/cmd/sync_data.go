@@ -3,8 +3,9 @@ package cmd
 import (
 	"log"
 	"strings"
-	"toolbox/config"
-	"toolbox/sync"
+
+	"github.com/hgajjar/toolbox/config"
+	"github.com/hgajjar/toolbox/sync"
 
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"

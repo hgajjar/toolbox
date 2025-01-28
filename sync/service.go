@@ -6,9 +6,10 @@ import (
 	"os"
 	"strconv"
 	"strings"
-	"toolbox/config"
-	syncData "toolbox/data/sync"
-	"toolbox/queue"
+
+	"github.com/hgajjar/toolbox/config"
+	syncData "github.com/hgajjar/toolbox/data/sync"
+	"github.com/hgajjar/toolbox/queue"
 
 	amqp "github.com/rabbitmq/amqp091-go"
 	"github.com/rs/zerolog"

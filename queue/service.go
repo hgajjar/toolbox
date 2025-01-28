@@ -3,7 +3,8 @@ package queue
 import (
 	"context"
 	"os"
-	"toolbox/config"
+
+	"github.com/hgajjar/toolbox/config"
 
 	amqp "github.com/rabbitmq/amqp091-go"
 	"github.com/rs/zerolog"

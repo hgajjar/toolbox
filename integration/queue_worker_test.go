@@ -9,9 +9,10 @@ import (
 	"io"
 	"testing"
 	"time"
-	"toolbox/config"
-	"toolbox/integration/rabbitmq"
-	"toolbox/queue"
+
+	"github.com/hgajjar/toolbox/config"
+	"github.com/hgajjar/toolbox/integration/rabbitmq"
+	"github.com/hgajjar/toolbox/queue"
 
 	"github.com/docker/docker/api/types/container"
 	"github.com/docker/docker/api/types/image"

@@ -3,8 +3,9 @@ package application
 import (
 	"bytes"
 	"fmt"
-	"toolbox/application/cmd"
-	"toolbox/config"
+
+	"github.com/hgajjar/toolbox/application/cmd"
+	"github.com/hgajjar/toolbox/config"
 
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"

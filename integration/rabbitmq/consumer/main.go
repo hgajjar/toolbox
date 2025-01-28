@@ -8,7 +8,8 @@ import (
 	"log"
 	"os"
 	"strconv"
-	"toolbox/integration/rabbitmq"
+
+	"github.com/hgajjar/toolbox/integration/rabbitmq"
 )
 
 func main() {

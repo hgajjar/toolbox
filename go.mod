@@ -1,4 +1,4 @@
-module toolbox
+module github.com/hgajjar/toolbox
 
 go 1.22.1
 

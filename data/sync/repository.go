@@ -6,8 +6,9 @@ import (
 	"fmt"
 	"log"
 	"strings"
-	"toolbox/config"
-	"toolbox/data"
+
+	"github.com/hgajjar/toolbox/config"
+	"github.com/hgajjar/toolbox/data"
 
 	"github.com/lib/pq"
 )

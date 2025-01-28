@@ -2,9 +2,10 @@ package sync
 
 import (
 	"context"
-	"toolbox/config"
-	"toolbox/data"
-	syncData "toolbox/data/sync"
+
+	"github.com/hgajjar/toolbox/config"
+	"github.com/hgajjar/toolbox/data"
+	syncData "github.com/hgajjar/toolbox/data/sync"
 )
 
 func castToMappingEntities[T MappingInterface](entities []T) []MappingInterface {

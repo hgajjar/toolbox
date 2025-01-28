@@ -8,7 +8,8 @@ import (
 	"sort"
 	"sync"
 	"time"
-	"toolbox/config"
+
+	"github.com/hgajjar/toolbox/config"
 
 	"github.com/Adaendra/uilive"
 	"github.com/pkg/errors"

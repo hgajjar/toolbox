@@ -2,8 +2,9 @@ package cmd
 
 import (
 	"os"
-	"toolbox/config"
-	"toolbox/recipe"
+
+	"github.com/hgajjar/toolbox/config"
+	"github.com/hgajjar/toolbox/recipe"
 
 	"github.com/rs/zerolog"
 	"github.com/spf13/cobra"

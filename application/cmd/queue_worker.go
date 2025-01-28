@@ -2,8 +2,9 @@ package cmd
 
 import (
 	"strings"
-	"toolbox/config"
-	"toolbox/queue"
+
+	"github.com/hgajjar/toolbox/config"
+	"github.com/hgajjar/toolbox/queue"
 
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
