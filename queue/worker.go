@@ -11,7 +11,6 @@ import (
 
 	"github.com/hgajjar/toolbox/config"
 
-	"github.com/Adaendra/uilive"
 	"github.com/pkg/errors"
 	amqp "github.com/rabbitmq/amqp091-go"
 	"github.com/rs/zerolog"
@@ -24,11 +23,12 @@ type Worker struct {
 	consoleCmdPrefix []string
 	consoleCmdDir    string
 	consoleCmd       []string
+	logger           io.Writer
 }
 
 type queueMessageMap map[string]int
 
-func NewWorker(conn *amqp.Connection, queues []string, daemonMode bool, cmdPrefix []string, cmdDir string, cmd []string) *Worker {
+func NewWorker(conn *amqp.Connection, queues []string, daemonMode bool, cmdPrefix []string, cmdDir string, cmd []string, logger io.Writer) *Worker {
 	return &Worker{
 		conn:             conn,
 		queues:           queues,
@@ -36,6 +36,7 @@ func NewWorker(conn *amqp.Connection, queues []string, daemonMode bool, cmdPrefi
 		consoleCmdPrefix: cmdPrefix,
 		consoleCmdDir:    cmdDir,
 		consoleCmd:       cmd,
+		logger:           logger,
 	}
 }
 
@@ -54,9 +55,6 @@ func (w *Worker) Execute(ctx context.Context) {
 	queueMapLock := sync.RWMutex{}
 	var wg sync.WaitGroup
 
-	writer := uilive.New()
-	writer.Start()
-
 	for queue := range qMap {
 		wg.Add(1)
 
@@ -70,28 +68,26 @@ func (w *Worker) Execute(ctx context.Context) {
 	}
 
 	if config.Verbose {
-		go func(qMap queueMessageMap, writer io.Writer, queueMapLock *sync.RWMutex) {
+		go func(qMap queueMessageMap, queueMapLock *sync.RWMutex) {
 			for {
-				w.printStats(qMap, writer, queueMapLock)
+				w.printStats(qMap, queueMapLock)
 				time.Sleep(time.Millisecond * 500)
 			}
-		}(qMap, writer, &queueMapLock)
+		}(qMap, &queueMapLock)
 	}
 
 	wg.Wait()
 
 	if config.Verbose {
-		w.printStats(qMap, writer, &queueMapLock)
+		w.printStats(qMap, &queueMapLock)
 	}
-
-	writer.Stop()
 }
 
 func (w *Worker) SetDaemonMode(mode bool) {
 	w.daemonMode = mode
 }
 
-func (w *Worker) printStats(queues queueMessageMap, wr io.Writer, queueMapLock *sync.RWMutex) {
+func (w *Worker) printStats(queues queueMessageMap, queueMapLock *sync.RWMutex) {
 	queueMapLock.RLock()
 	defer queueMapLock.RUnlock()
 
@@ -100,7 +96,7 @@ func (w *Worker) printStats(queues queueMessageMap, wr io.Writer, queueMapLock *
 		message += fmt.Sprintf("Messages: %d [%s]\n", queues[key], key)
 	}
 
-	fmt.Fprint(wr, message)
+	fmt.Fprint(w.logger, message)
 }
 
 func (w *Worker) sortMapKeys(queues queueMessageMap) []string {

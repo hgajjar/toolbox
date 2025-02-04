@@ -2,8 +2,8 @@ package queue
 
 import (
 	"context"
-	"os"
 
+	"github.com/Adaendra/uilive"
 	"github.com/hgajjar/toolbox/config"
 
 	amqp "github.com/rabbitmq/amqp091-go"
@@ -16,7 +16,11 @@ func StartWorker(ctx context.Context, rabbitmqConnString string, queues []string
 		zerolog.SetGlobalLevel(zerolog.DebugLevel)
 	}
 
-	logger := zerolog.New(zerolog.ConsoleWriter{Out: os.Stderr}).With().Timestamp().Logger()
+	writer := uilive.New()
+	writer.Start()
+	defer writer.Stop()
+
+	logger := zerolog.New(zerolog.ConsoleWriter{Out: writer.Bypass()}).With().Timestamp().Logger()
 
 	// Attach the Logger to the context.Context
 	ctx = logger.WithContext(ctx)
@@ -27,6 +31,6 @@ func StartWorker(ctx context.Context, rabbitmqConnString string, queues []string
 	}
 	defer conn.Close()
 
-	worker := NewWorker(conn, queues, daemonMode, cmdPrefix, cmdDir, cmd)
+	worker := NewWorker(conn, queues, daemonMode, cmdPrefix, cmdDir, cmd, writer)
 	worker.Execute(ctx)
 }
