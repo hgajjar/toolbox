@@ -86,10 +86,10 @@ func (e *Exporter) listenRabbitMqNotifications(ctx context.Context) {
 		for b := range blockings {
 			if b.Active {
 				e.connIsBlocked = true
-				logger.Debug().Msgf("RabbitMQ connection blocked: %q", b.Reason)
+				logger.Warn().Msgf("RabbitMQ connection blocked: %q", b.Reason)
 			} else {
 				e.connIsBlocked = false
-				logger.Debug().Msgf("RabbitMQ connection unblocked")
+				logger.Info().Msgf("RabbitMQ connection unblocked")
 			}
 		}
 	}(ctx, e)

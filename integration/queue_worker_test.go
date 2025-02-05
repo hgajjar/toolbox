@@ -50,6 +50,8 @@ func TestQueueWorker(t *testing.T) {
 		}
 	}
 
+	logger := io.Discard
+
 	t.Run("It consumes all messages from the queue and exits", func(t *testing.T) {
 		for i := 0; i < 1000; i++ {
 			rmq.Publish([]byte(fmt.Sprintf("product-%d", i)), "test.product")
@@ -57,7 +59,7 @@ func TestQueueWorker(t *testing.T) {
 			rmq.Publish([]byte(fmt.Sprintf("user-%d", i)), "test.user")
 		}
 
-		worker := queue.NewWorker(rmq.Connection(), queues, false, []string{}, "rabbitmq/consumer", []string{"./consumer", hostPort, queueChunkSize})
+		worker := queue.NewWorker(rmq.Connection(), queues, false, []string{}, "rabbitmq/consumer", []string{"./consumer", hostPort, queueChunkSize}, logger)
 		worker.Execute(ctx)
 
 		for _, queue := range queues {
@@ -79,7 +81,7 @@ func TestQueueWorker(t *testing.T) {
 			rmq.Publish([]byte(fmt.Sprintf("user-%d", i)), "test.user")
 		}
 
-		worker := queue.NewWorker(rmq.Connection(), queues, true, []string{}, "rabbitmq/consumer", []string{"./consumer", hostPort, queueChunkSize})
+		worker := queue.NewWorker(rmq.Connection(), queues, true, []string{}, "rabbitmq/consumer", []string{"./consumer", hostPort, queueChunkSize}, logger)
 		go worker.Execute(ctx)
 
 		time.Sleep(3 * time.Second)

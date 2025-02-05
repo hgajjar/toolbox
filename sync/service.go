@@ -3,10 +3,11 @@ package sync
 import (
 	"context"
 	"database/sql"
-	"os"
+	"io"
 	"strconv"
 	"strings"
 
+	"github.com/Adaendra/uilive"
 	"github.com/hgajjar/toolbox/config"
 	syncData "github.com/hgajjar/toolbox/data/sync"
 	"github.com/hgajjar/toolbox/queue"
@@ -21,7 +22,10 @@ func RunSyncData(ctx context.Context, runQueueWorkerOpt bool, queues []string, c
 		zerolog.SetGlobalLevel(zerolog.DebugLevel)
 	}
 
-	logger := zerolog.New(zerolog.ConsoleWriter{Out: os.Stderr}).With().Timestamp().Logger()
+	writer := uilive.New()
+	writer.Start()
+	defer writer.Stop()
+	logger := zerolog.New(zerolog.ConsoleWriter{Out: writer.Bypass()}).With().Timestamp().Logger()
 
 	// Attach the Logger to the context.Context
 	ctx = logger.WithContext(ctx)
@@ -41,7 +45,7 @@ func RunSyncData(ctx context.Context, runQueueWorkerOpt bool, queues []string, c
 	var workerDoneCh <-chan any
 	var queueWorker *queue.Worker
 	if runQueueWorkerOpt {
-		workerDoneCh, queueWorker = startQueueWorker(ctx, queues, conn, true, cmdPrefix, cmdDir, cmd)
+		workerDoneCh, queueWorker = startQueueWorker(ctx, queues, conn, true, cmdPrefix, cmdDir, cmd, writer)
 	}
 
 	exporter := NewExporter(conn, getSyncDataPlugins(dbconn, resourceFilter, syncDataEntities))
@@ -56,9 +60,9 @@ func RunSyncData(ctx context.Context, runQueueWorkerOpt bool, queues []string, c
 	}
 }
 
-func startQueueWorker(ctx context.Context, queues []string, conn *amqp.Connection, daemonMode bool, cmdPrefix []string, cmdDir string, cmd []string) (<-chan any, *queue.Worker) {
+func startQueueWorker(ctx context.Context, queues []string, conn *amqp.Connection, daemonMode bool, cmdPrefix []string, cmdDir string, cmd []string, writer io.Writer) (<-chan any, *queue.Worker) {
 	done := make(chan any)
-	worker := queue.NewWorker(conn, queues, daemonMode, cmdPrefix, cmdDir, cmd)
+	worker := queue.NewWorker(conn, queues, daemonMode, cmdPrefix, cmdDir, cmd, writer)
 
 	go func(ctx context.Context, worker *queue.Worker) {
 		worker.Execute(ctx)
