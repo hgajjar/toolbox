@@ -74,6 +74,9 @@ sync-data:
       store: true
       locale: true
       queue_group: sync.storage.category
+      mappings:
+        - source: category_key
+          destination: id_category
     - resource: category_node
       table: spy_category_node_page_search
       filter_column: fk_category_node
@@ -133,8 +136,8 @@ sync-data:
       locale: true
       queue_group: sync.storage.content
       mappings:
-        - source: content_key
-          destination: idContent
+        - source: idContent
+          destination: content_key
     - resource: customer_review
       table: pyz_customer_review_storage
       filter_column: fk_product_abstract
