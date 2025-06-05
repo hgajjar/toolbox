@@ -41,7 +41,7 @@ func (p *SyncEntity) GenerateMappingKey(resourceName, source, sourceId string) s
 		keyParts = append(keyParts, strings.ToLower(p.Locale))
 	}
 
-	keyParts = append(keyParts, source, p.escapeKey(sourceId))
+	keyParts = append(keyParts, strings.ToLower(source), p.escapeKey(sourceId))
 
 	return strings.Join(keyParts, ":")
 }
