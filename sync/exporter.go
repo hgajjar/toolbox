@@ -216,9 +216,13 @@ func (e *Exporter) exportMappingData(ctx context.Context, rmqChannel *amqp.Chann
 			return fmt.Errorf("entity data does not have key %s", mapping.GetDestination())
 		}
 
-		sourceVal, ok := source.(string)
-		if !ok {
-			return fmt.Errorf("failed to parse mapping source value as string. Resource: %s, Data: %s", resourceName, entity.GetData())
+		sourceVal, err := e.extractSourceValue(source)
+		if err != nil {
+			return fmt.Errorf("mapping source must be either string or integer. Err: %w", err)
+		}
+
+		if sourceVal == "" {
+			return fmt.Errorf("mapping source can not be empty. Resource: %s, Source: %v, Data: %s", resourceName, source, entity.GetData())
 		}
 
 		key := entity.GenerateMappingKey(resourceName, mapping.GetSource(), sourceVal)
@@ -254,5 +258,16 @@ func (e *Exporter) waitUntilConnIsUnblocked(ctx context.Context) {
 			zerolog.Ctx(ctx).Warn().Msg("RabbitMQ connection is closed unexpectedly")
 		}
 		time.Sleep(rabbitMqBlockedConnWait)
+	}
+}
+
+func (e *Exporter) extractSourceValue(source any) (string, error) {
+	switch v := source.(type) {
+	case string:
+		return v, nil
+	case float64:
+		return fmt.Sprintf("%v", v), nil
+	default:
+		return "", fmt.Errorf("unsupported source type: %T", v)
 	}
 }
