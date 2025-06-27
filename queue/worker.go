@@ -2,7 +2,6 @@ package queue
 
 import (
 	"context"
-	"fmt"
 	"io"
 	"os/exec"
 	"sort"
@@ -10,6 +9,8 @@ import (
 	"time"
 
 	"github.com/hgajjar/toolbox/config"
+	"github.com/jedib0t/go-pretty/v6/table"
+	"github.com/jedib0t/go-pretty/v6/text"
 
 	"github.com/pkg/errors"
 	amqp "github.com/rabbitmq/amqp091-go"
@@ -91,12 +92,16 @@ func (w *Worker) printStats(queues queueMessageMap, queueMapLock *sync.RWMutex) 
 	queueMapLock.RLock()
 	defer queueMapLock.RUnlock()
 
-	var message string
-	for _, key := range w.sortMapKeys(queues) {
-		message += fmt.Sprintf("Messages: %d [%s]\n", queues[key], key)
+	t := table.NewWriter()
+	t.Style().Color.Header = text.Colors{text.FgGreen}
+	t.SetOutputMirror(w.logger)
+	t.AppendHeader(table.Row{"#", "Queue", "Messages"})
+
+	for i, key := range w.sortMapKeys(queues) {
+		t.AppendRow(table.Row{i + 1, key, queues[key]})
 	}
 
-	fmt.Fprint(w.logger, message)
+	t.Render()
 }
 
 func (w *Worker) sortMapKeys(queues queueMessageMap) []string {
