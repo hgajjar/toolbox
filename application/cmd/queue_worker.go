@@ -41,13 +41,12 @@ func NewQueueWorkerCmd() *QueueWorkerCmd {
 var queueWorkerCmd = &cobra.Command{
 	Use: "queue:worker",
 	Run: func(cmd *cobra.Command, args []string) {
-		rabbitmqConnStr := viper.GetString(argRabbitmqConnString)
 		queues := viper.GetStringSlice(queueNamesKey)
 
 		cmdPrefix := strings.Split(viper.GetString(config.ConsoleCmdPrefixKey), " ")
 		cmdDir := viper.GetString(config.ConsoleCmdDirKey)
 		consoleCmd := strings.Split(viper.GetString(config.ConsoleCmdKey), " ")
 
-		queue.StartWorker(cmd.Context(), rabbitmqConnStr, queues, daemonModeOpt, cmdPrefix, cmdDir, consoleCmd)
+		queue.StartWorker(cmd.Context(), config.GetRabbitMQConnectionString(), queues, daemonModeOpt, cmdPrefix, cmdDir, consoleCmd)
 	},
 }

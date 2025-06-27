@@ -58,8 +58,6 @@ func (s *SyncDataCmd) Cmd() *cobra.Command {
 var syncDataCmd = &cobra.Command{
 	Use: "sync:data",
 	Run: func(cmd *cobra.Command, args []string) {
-		rabbitmqConnStr := viper.GetString(argRabbitmqConnString)
-		postgresConnStr := viper.GetString(argPostgresConnString)
 		queues := viper.GetStringSlice(queueNamesKey)
 
 		cmdPrefix := strings.Split(viper.GetString(config.ConsoleCmdPrefixKey), " ")
@@ -75,6 +73,18 @@ var syncDataCmd = &cobra.Command{
 			log.Panicf("Failed to parse sync-data.entities config: %s", err)
 		}
 
-		sync.RunSyncData(cmd.Context(), runQueueWorkerOpt, queues, cmdPrefix, cmdDir, consoleCmd, syncConfigEntities, rabbitmqConnStr, postgresConnStr, resourceFilter, idsOpt)
+		sync.RunSyncData(
+			cmd.Context(),
+			runQueueWorkerOpt,
+			queues,
+			cmdPrefix,
+			cmdDir,
+			consoleCmd,
+			syncConfigEntities,
+			config.GetRabbitMQConnectionString(),
+			config.GetPostgresConnectionString(),
+			resourceFilter,
+			idsOpt,
+		)
 	},
 }
