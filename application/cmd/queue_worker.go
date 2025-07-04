@@ -4,6 +4,7 @@ import (
 	"strings"
 
 	"github.com/hgajjar/toolbox/config"
+	"github.com/hgajjar/toolbox/container"
 	"github.com/hgajjar/toolbox/queue"
 
 	"github.com/spf13/cobra"
@@ -47,6 +48,17 @@ var queueWorkerCmd = &cobra.Command{
 		cmdDir := viper.GetString(config.ConsoleCmdDirKey)
 		consoleCmd := strings.Split(viper.GetString(config.ConsoleCmdKey), " ")
 
-		queue.StartWorker(cmd.Context(), config.GetRabbitMQConnectionString(), queues, daemonModeOpt, cmdPrefix, cmdDir, consoleCmd)
+		workerArgs := queue.WorkerArgs{
+			RabbitmqConnString: config.GetRabbitMQConnectionString(),
+			Queues:             queues,
+			DaemonMode:         daemonModeOpt,
+			CmdPrefix:          cmdPrefix,
+			CmdDir:             cmdDir,
+			Cmd:                consoleCmd,
+		}
+
+		dic := container.New()
+
+		queue.StartWorker(cmd.Context(), dic, workerArgs)
 	},
 }

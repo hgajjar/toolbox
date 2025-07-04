@@ -5,6 +5,7 @@ import (
 	"strings"
 
 	"github.com/hgajjar/toolbox/config"
+	"github.com/hgajjar/toolbox/container"
 	"github.com/hgajjar/toolbox/sync"
 
 	"github.com/spf13/cobra"
@@ -73,18 +74,25 @@ var syncDataCmd = &cobra.Command{
 			log.Panicf("Failed to parse sync-data.entities config: %s", err)
 		}
 
+		syncDataArgs := sync.SyncDataArgs{
+			Queues:             queues,
+			CmdPrefix:          cmdPrefix,
+			CmdDir:             cmdDir,
+			Cmd:                consoleCmd,
+			SyncDataEntities:   syncConfigEntities,
+			ResourceFilter:     resourceFilter,
+			IDsOpt:             idsOpt,
+			RunQueueWorkerOpt:  runQueueWorkerOpt,
+			RabbitmqConnString: config.GetRabbitMQConnectionString(),
+			PostgresConnString: config.GetPostgresConnectionString(),
+		}
+
+		dic := container.New()
+
 		sync.RunSyncData(
 			cmd.Context(),
-			runQueueWorkerOpt,
-			queues,
-			cmdPrefix,
-			cmdDir,
-			consoleCmd,
-			syncConfigEntities,
-			config.GetRabbitMQConnectionString(),
-			config.GetPostgresConnectionString(),
-			resourceFilter,
-			idsOpt,
+			dic,
+			syncDataArgs,
 		)
 	},
 }

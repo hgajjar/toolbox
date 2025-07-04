@@ -68,7 +68,7 @@ func (w *Worker) Execute(ctx context.Context) {
 		}(ctx, queue)
 	}
 
-	if config.Verbose {
+	if config.Verbose > 0 {
 		go func(qMap queueMessageMap, queueMapLock *sync.RWMutex) {
 			for {
 				w.printStats(qMap, queueMapLock)
@@ -79,7 +79,7 @@ func (w *Worker) Execute(ctx context.Context) {
 
 	wg.Wait()
 
-	if config.Verbose {
+	if config.Verbose > 0 {
 		w.printStats(qMap, &queueMapLock)
 	}
 }

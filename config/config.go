@@ -2,13 +2,15 @@ package config
 
 import (
 	"fmt"
+	"os"
+	"strings"
 
 	"github.com/spf13/viper"
 )
 
 var (
 	CfgFile string
-	Verbose bool
+	Verbose int
 )
 
 const (
@@ -42,6 +44,9 @@ func init() {
 	viper.BindEnv(postgresUserKey, "POSTGRESQL_USER")
 	viper.BindEnv(postgresPasswordKey, "POSTGRESQL_PW")
 	viper.BindEnv(postgresDatabaseKey, "POSTGRESQL_DATABASE")
+
+	// count verbosity level from command line arguments
+	Verbose = countVerbosityLevel(os.Args)
 }
 
 func GetRabbitMQConnectionString() string {
@@ -71,4 +76,21 @@ func GetPostgresConnectionString() string {
 	postgresDatabase := viper.GetString(postgresDatabaseKey)
 
 	return fmt.Sprintf("postgres://%s:%s@%s:%d/%s?sslmode=disable", postgresUser, postgresPassword, postgresServer, postgresPort, postgresDatabase)
+}
+
+func countVerbosityLevel(args []string) int {
+	count := 0
+	for _, arg := range args {
+		if strings.HasPrefix(arg, "-") && len(arg) > 1 {
+			// Handle -v, -vv, -vvv
+			if strings.HasPrefix(arg, "-v") {
+				for _, ch := range arg[1:] {
+					if ch == 'v' {
+						count++
+					}
+				}
+			}
+		}
+	}
+	return count
 }

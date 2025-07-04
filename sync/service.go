@@ -9,6 +9,7 @@ import (
 
 	"github.com/Adaendra/uilive"
 	"github.com/hgajjar/toolbox/config"
+	"github.com/hgajjar/toolbox/container"
 	syncData "github.com/hgajjar/toolbox/data/sync"
 	"github.com/hgajjar/toolbox/queue"
 
@@ -16,27 +17,35 @@ import (
 	"github.com/rs/zerolog"
 )
 
-func RunSyncData(ctx context.Context, runQueueWorkerOpt bool, queues []string, cmdPrefix []string, cmdDir string, cmd []string, syncDataEntities []config.SyncEntity, rabbitmqConnString, postgresConnString, resourceFilter, idsOpt string) {
-	zerolog.SetGlobalLevel(zerolog.InfoLevel)
-	if config.Verbose {
-		zerolog.SetGlobalLevel(zerolog.DebugLevel)
-	}
+type SyncDataArgs struct {
+	RunQueueWorkerOpt  bool
+	Queues             []string
+	CmdPrefix          []string
+	CmdDir             string
+	Cmd                []string
+	SyncDataEntities   []config.SyncEntity
+	RabbitmqConnString string
+	PostgresConnString string
+	ResourceFilter     string
+	IDsOpt             string
+}
 
+func RunSyncData(ctx context.Context, dic *container.Container, args SyncDataArgs) {
 	writer := uilive.New()
 	writer.Start()
 	defer writer.Stop()
-	logger := zerolog.New(zerolog.ConsoleWriter{Out: writer.Bypass()}).With().Timestamp().Logger()
+	logger := dic.Logger(writer.Bypass())
 
 	// Attach the Logger to the context.Context
 	ctx = logger.WithContext(ctx)
 
-	conn, err := amqp.Dial(rabbitmqConnString)
+	conn, err := amqp.Dial(args.RabbitmqConnString)
 	if err != nil {
 		logger.Panic().Err(err).Msg("Failed to connect to RabbitMQ")
 	}
 	defer conn.Close()
 
-	dbconn, err := sql.Open("postgres", postgresConnString)
+	dbconn, err := sql.Open("postgres", args.PostgresConnString)
 	if err != nil {
 		logger.Panic().Err(err).Msg("Failed to connect to Postgres")
 	}
@@ -44,17 +53,17 @@ func RunSyncData(ctx context.Context, runQueueWorkerOpt bool, queues []string, c
 
 	var workerDoneCh <-chan any
 	var queueWorker *queue.Worker
-	if runQueueWorkerOpt {
-		workerDoneCh, queueWorker = startQueueWorker(ctx, queues, conn, true, cmdPrefix, cmdDir, cmd, writer)
+	if args.RunQueueWorkerOpt {
+		workerDoneCh, queueWorker = startQueueWorker(ctx, args.Queues, conn, true, args.CmdPrefix, args.CmdDir, args.Cmd, writer)
 	}
 
-	exporter := NewExporter(conn, getSyncDataPlugins(dbconn, resourceFilter, syncDataEntities))
-	err = exporter.Export(ctx, getIDs(ctx, idsOpt))
+	exporter := NewExporter(conn, getSyncDataPlugins(dbconn, args.ResourceFilter, args.SyncDataEntities))
+	err = exporter.Export(ctx, getIDs(ctx, args.IDsOpt))
 	if err != nil {
 		logger.Panic().Err(err).Msg("Failed to export data to rabbitmq")
 	}
 
-	if runQueueWorkerOpt {
+	if args.RunQueueWorkerOpt {
 		queueWorker.SetDaemonMode(false)
 		<-workerDoneCh
 	}

@@ -3,7 +3,6 @@ package cmd
 import (
 	"os"
 
-	"github.com/hgajjar/toolbox/config"
 	"github.com/hgajjar/toolbox/recipe"
 
 	"github.com/rs/zerolog"
@@ -34,11 +33,6 @@ var installCmd = &cobra.Command{
 	Use:   "install",
 	Short: "Run install for a specified environment.",
 	Run: func(cmd *cobra.Command, args []string) {
-		zerolog.SetGlobalLevel(zerolog.InfoLevel)
-		if config.Verbose {
-			zerolog.SetGlobalLevel(zerolog.DebugLevel)
-		}
-
 		logger := zerolog.New(zerolog.ConsoleWriter{Out: os.Stderr}).With().Timestamp().Logger()
 
 		// Attach the Logger to the context.Context
