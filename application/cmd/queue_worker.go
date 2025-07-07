@@ -4,6 +4,7 @@ import (
 	"strings"
 
 	"github.com/hgajjar/toolbox/config"
+	"github.com/hgajjar/toolbox/container"
 	"github.com/hgajjar/toolbox/queue"
 
 	"github.com/spf13/cobra"
@@ -41,13 +42,23 @@ func NewQueueWorkerCmd() *QueueWorkerCmd {
 var queueWorkerCmd = &cobra.Command{
 	Use: "queue:worker",
 	Run: func(cmd *cobra.Command, args []string) {
-		rabbitmqConnStr := viper.GetString(argRabbitmqConnString)
 		queues := viper.GetStringSlice(queueNamesKey)
 
 		cmdPrefix := strings.Split(viper.GetString(config.ConsoleCmdPrefixKey), " ")
 		cmdDir := viper.GetString(config.ConsoleCmdDirKey)
 		consoleCmd := strings.Split(viper.GetString(config.ConsoleCmdKey), " ")
 
-		queue.StartWorker(cmd.Context(), rabbitmqConnStr, queues, daemonModeOpt, cmdPrefix, cmdDir, consoleCmd)
+		workerArgs := queue.WorkerArgs{
+			RabbitmqConnString: config.GetRabbitMQConnectionString(),
+			Queues:             queues,
+			DaemonMode:         daemonModeOpt,
+			CmdPrefix:          cmdPrefix,
+			CmdDir:             cmdDir,
+			Cmd:                consoleCmd,
+		}
+
+		dic := container.New()
+
+		queue.StartWorker(cmd.Context(), dic, workerArgs)
 	},
 }

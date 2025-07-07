@@ -1,7 +1,18 @@
 rabbitmq:
   connection-string: amqp://spryker:spryker@rabbitmq:5672/
+  # The following parameters are optional and can be used build the connection string
+  # server:
+  # port:
+  # user:
+  # password:
 postgres:
   connection-string: postgres://spryker:spryker@postgres:5432/spryker?sslmode=disable
+  # The following parameters are optional and can be used build the connection string
+  # server:
+  # port:
+  # user:
+  # password:
+  database: spryker
 consoleCmdPrefix: ""
 consoleCmdDir: "."
 consoleCmd: "vendor/bin/console queue:task:start"

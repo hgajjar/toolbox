@@ -3,34 +3,35 @@ package queue
 import (
 	"context"
 
-	"github.com/Adaendra/uilive"
-	"github.com/hgajjar/toolbox/config"
+	"github.com/hgajjar/toolbox/container"
 
 	amqp "github.com/rabbitmq/amqp091-go"
-	"github.com/rs/zerolog"
 )
 
-func StartWorker(ctx context.Context, rabbitmqConnString string, queues []string, daemonMode bool, cmdPrefix []string, cmdDir string, cmd []string) {
-	zerolog.SetGlobalLevel(zerolog.InfoLevel)
-	if config.Verbose {
-		zerolog.SetGlobalLevel(zerolog.DebugLevel)
-	}
+type WorkerArgs struct {
+	RabbitmqConnString string
+	Queues             []string
+	DaemonMode         bool
+	CmdPrefix          []string
+	CmdDir             string
+	Cmd                []string
+}
 
-	writer := uilive.New()
-	writer.Start()
-	defer writer.Stop()
+func StartWorker(ctx context.Context, dic *container.Container, args WorkerArgs) {
+	writer, stopFunc := dic.Writer()
+	defer stopFunc()
 
-	logger := zerolog.New(zerolog.ConsoleWriter{Out: writer.Bypass()}).With().Timestamp().Logger()
+	logger := dic.Logger()
 
 	// Attach the Logger to the context.Context
 	ctx = logger.WithContext(ctx)
 
-	conn, err := amqp.Dial(rabbitmqConnString)
+	conn, err := amqp.Dial(args.RabbitmqConnString)
 	if err != nil {
 		logger.Panic().Err(err).Msg("Failed to connect to RabbitMQ")
 	}
 	defer conn.Close()
 
-	worker := NewWorker(conn, queues, daemonMode, cmdPrefix, cmdDir, cmd, writer)
+	worker := NewWorker(conn, args.Queues, args.DaemonMode, args.CmdPrefix, args.CmdDir, args.Cmd, writer)
 	worker.Execute(ctx)
 }

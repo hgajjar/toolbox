@@ -35,7 +35,7 @@ func TestQueueWorker(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	config.Verbose = true
+	config.Verbose = 1
 
 	rmq, err := setupRabbitMqConnection(hostPort)
 	if err != nil {
