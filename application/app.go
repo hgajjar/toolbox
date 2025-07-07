@@ -27,7 +27,6 @@ func New(defaultConf []byte) *Toolbox {
 
 	cobra.OnInitialize(initConfig)
 	rootCmd.PersistentFlags().StringVarP(&config.CfgFile, "config", "c", "", "config file (default is toolbox.yml in current dir)")
-	// rootCmd.PersistentFlags().IntVarP(&config.Verbose, "verbose", "v", 0, "Verbosity level (0, 1, 2)")
 	rootCmd.PersistentFlags().CountP("verbose", "v", "Increase verbosity")
 
 	rootCmd.AddCommand(cmd.NewSyncDataCmd().Cmd())

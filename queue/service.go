@@ -3,7 +3,6 @@ package queue
 import (
 	"context"
 
-	"github.com/Adaendra/uilive"
 	"github.com/hgajjar/toolbox/container"
 
 	amqp "github.com/rabbitmq/amqp091-go"
@@ -19,11 +18,10 @@ type WorkerArgs struct {
 }
 
 func StartWorker(ctx context.Context, dic *container.Container, args WorkerArgs) {
-	writer := uilive.New()
-	writer.Start()
-	defer writer.Stop()
+	writer, stopFunc := dic.Writer()
+	defer stopFunc()
 
-	logger := dic.Logger(writer.Bypass())
+	logger := dic.Logger()
 
 	// Attach the Logger to the context.Context
 	ctx = logger.WithContext(ctx)

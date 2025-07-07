@@ -7,7 +7,6 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/Adaendra/uilive"
 	"github.com/hgajjar/toolbox/config"
 	"github.com/hgajjar/toolbox/container"
 	syncData "github.com/hgajjar/toolbox/data/sync"
@@ -31,10 +30,10 @@ type SyncDataArgs struct {
 }
 
 func RunSyncData(ctx context.Context, dic *container.Container, args SyncDataArgs) {
-	writer := uilive.New()
-	writer.Start()
-	defer writer.Stop()
-	logger := dic.Logger(writer.Bypass())
+	writer, stopFunc := dic.Writer()
+	defer stopFunc()
+
+	logger := dic.Logger()
 
 	// Attach the Logger to the context.Context
 	ctx = logger.WithContext(ctx)

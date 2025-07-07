@@ -4,11 +4,14 @@ import (
 	"io"
 	"log"
 
+	"github.com/Adaendra/uilive"
+	"github.com/Adaendra/uilive/pkg/writer"
 	"github.com/hgajjar/toolbox/config"
 	"github.com/rs/zerolog"
 )
 
 type Container struct {
+	writer *writer.Writer
 	logger *zerolog.Logger
 }
 
@@ -16,7 +19,16 @@ func New() *Container {
 	return &Container{}
 }
 
-func (c *Container) Logger(bypassWriter io.Writer) *zerolog.Logger {
+func (c *Container) Writer() (io.Writer, func()) {
+	if c.writer == nil {
+		c.writer = uilive.New()
+		c.writer.Start()
+	}
+
+	return c.writer, func() { c.writer.Stop() }
+}
+
+func (c *Container) Logger() *zerolog.Logger {
 	if c.logger == nil {
 		level := zerolog.ErrorLevel
 
@@ -32,7 +44,11 @@ func (c *Container) Logger(bypassWriter io.Writer) *zerolog.Logger {
 			log.Fatal("Invalid verbosity level.")
 		}
 
-		logger := zerolog.New(zerolog.ConsoleWriter{Out: bypassWriter}).Level(level).With().Timestamp().Logger()
+		if c.writer == nil {
+			log.Fatal("Writer must be initialized before Logger.")
+		}
+
+		logger := zerolog.New(zerolog.ConsoleWriter{Out: c.writer.Bypass()}).Level(level).With().Timestamp().Logger()
 		c.logger = &logger
 	}
 
