@@ -33,6 +33,8 @@ func (c *Container) Logger() *zerolog.Logger {
 		level := zerolog.ErrorLevel
 
 		switch config.Verbose {
+		case 0:
+			level = zerolog.Disabled
 		case 1:
 			level = zerolog.ErrorLevel
 		case 2:
