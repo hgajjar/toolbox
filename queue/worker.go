@@ -18,26 +18,28 @@ import (
 )
 
 type Worker struct {
-	conn             *amqp.Connection
-	queues           []string
-	daemonMode       bool
-	consoleCmdPrefix []string
-	consoleCmdDir    string
-	consoleCmd       []string
-	logger           io.Writer
+	conn                  *amqp.Connection
+	queues                []string
+	daemonMode            bool
+	consoleCmdPrefix      []string
+	consoleCmdDir         string
+	consoleCmd            []string
+	logger                io.Writer
+	queueDeclareRetryWait time.Duration
 }
 
 type queueMessageMap map[string]int
 
-func NewWorker(conn *amqp.Connection, queues []string, daemonMode bool, cmdPrefix []string, cmdDir string, cmd []string, logger io.Writer) *Worker {
+func NewWorker(conn *amqp.Connection, queues []string, daemonMode bool, cmdPrefix []string, cmdDir string, cmd []string, logger io.Writer, queueDeclareRetryWait time.Duration) *Worker {
 	return &Worker{
-		conn:             conn,
-		queues:           queues,
-		daemonMode:       daemonMode,
-		consoleCmdPrefix: cmdPrefix,
-		consoleCmdDir:    cmdDir,
-		consoleCmd:       cmd,
-		logger:           logger,
+		conn:                  conn,
+		queues:                queues,
+		daemonMode:            daemonMode,
+		consoleCmdPrefix:      cmdPrefix,
+		consoleCmdDir:         cmdDir,
+		consoleCmd:            cmd,
+		logger:                logger,
+		queueDeclareRetryWait: queueDeclareRetryWait,
 	}
 }
 
@@ -61,7 +63,7 @@ func (w *Worker) Execute(ctx context.Context) {
 
 		go func(ctx context.Context, queue string) {
 			defer wg.Done()
-			err := w.startQueueProcess(ctx, queue, qMap, &queueMapLock)
+			err := w.startQueueProcessWithWaitLoop(ctx, queue, qMap, &queueMapLock)
 			if err != nil {
 				zerolog.Ctx(ctx).Error().Stack().Err(err).Msg(err.Error())
 			}
@@ -113,6 +115,16 @@ func (w *Worker) sortMapKeys(queues queueMessageMap) []string {
 	sort.Strings(keys)
 
 	return keys
+}
+
+func (w *Worker) startQueueProcessWithWaitLoop(ctx context.Context, queue string, qMap queueMessageMap, queueMapLock *sync.RWMutex) error {
+	err := w.startQueueProcess(ctx, queue, qMap, queueMapLock)
+	if err != nil && w.daemonMode {
+		time.Sleep(w.queueDeclareRetryWait)
+		return w.startQueueProcessWithWaitLoop(ctx, queue, qMap, queueMapLock)
+	}
+
+	return err
 }
 
 func (w *Worker) startQueueProcess(ctx context.Context, queue string, queues queueMessageMap, queueMapLock *sync.RWMutex) error {
