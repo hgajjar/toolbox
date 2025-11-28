@@ -4,6 +4,7 @@ import (
 	"context"
 	"time"
 
+	"github.com/hgajjar/toolbox/config"
 	"github.com/hgajjar/toolbox/container"
 )
 
@@ -33,6 +34,6 @@ func StartWorker(ctx context.Context, dic *container.Container, args WorkerArgs)
 	}
 	defer conn.Close()
 
-	worker := NewWorker(conn, args.Queues, args.DaemonMode, args.CmdPrefix, args.CmdDir, args.Cmd, writer)
+	worker := NewWorker(conn, args.Queues, args.DaemonMode, args.CmdPrefix, args.CmdDir, args.Cmd, writer, config.QueueDeclareRetryWait)
 	worker.Execute(ctx)
 }

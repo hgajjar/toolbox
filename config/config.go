@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"os"
 	"strings"
+	"time"
 
 	"github.com/spf13/viper"
 )
@@ -30,6 +31,8 @@ const (
 	postgresUserKey             = "postgres.user"
 	postgresPasswordKey         = "postgres.password"
 	postgresDatabaseKey         = "postgres.database"
+
+	QueueDeclareRetryWait = time.Second * 30
 )
 
 func init() {

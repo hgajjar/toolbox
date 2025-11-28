@@ -70,7 +70,7 @@ func RunSyncData(ctx context.Context, dic *container.Container, args SyncDataArg
 
 func startQueueWorker(ctx context.Context, queues []string, conn *amqp.Connection, daemonMode bool, cmdPrefix []string, cmdDir string, cmd []string, writer io.Writer) (<-chan any, *queue.Worker) {
 	done := make(chan any)
-	worker := queue.NewWorker(conn, queues, daemonMode, cmdPrefix, cmdDir, cmd, writer)
+	worker := queue.NewWorker(conn, queues, daemonMode, cmdPrefix, cmdDir, cmd, writer, config.QueueDeclareRetryWait)
 
 	go func(ctx context.Context, worker *queue.Worker) {
 		worker.Execute(ctx)
