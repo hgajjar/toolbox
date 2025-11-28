@@ -2,10 +2,9 @@ package queue
 
 import (
 	"context"
+	"time"
 
 	"github.com/hgajjar/toolbox/container"
-
-	amqp "github.com/rabbitmq/amqp091-go"
 )
 
 type WorkerArgs struct {
@@ -15,6 +14,7 @@ type WorkerArgs struct {
 	CmdPrefix          []string
 	CmdDir             string
 	Cmd                []string
+	connectionTimeout  time.Duration
 }
 
 func StartWorker(ctx context.Context, dic *container.Container, args WorkerArgs) {
@@ -26,9 +26,10 @@ func StartWorker(ctx context.Context, dic *container.Container, args WorkerArgs)
 	// Attach the Logger to the context.Context
 	ctx = logger.WithContext(ctx)
 
-	conn, err := amqp.Dial(args.RabbitmqConnString)
+	args.connectionTimeout = time.Hour
+	conn, err := NewConnection(args).Setup(ctx, args)
 	if err != nil {
-		logger.Panic().Err(err).Msg("Failed to connect to RabbitMQ")
+		logger.Panic().Err(err).Msg("failed to establish RabbitMQ connection")
 	}
 	defer conn.Close()
 
