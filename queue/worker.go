@@ -124,7 +124,7 @@ func (w *Worker) startQueueProcessWithWaitLoop(ctx context.Context, queue string
 		return w.startQueueProcessWithWaitLoop(ctx, queue, qMap, queueMapLock)
 	}
 
-	return nil
+	return err
 }
 
 func (w *Worker) startQueueProcess(ctx context.Context, queue string, queues queueMessageMap, queueMapLock *sync.RWMutex) error {
