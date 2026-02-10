@@ -95,6 +95,8 @@ sync-data:
       store: true
       locale: true
       queue_group: sync.search.category
+      params:
+        type: page
     - resource: category_tree
       table: spy_category_tree_storage
       filter_column: id_category_tree_storage
@@ -139,6 +141,8 @@ sync-data:
       store: true
       locale: true
       queue_group: sync.search.cms
+      params:
+        type: page
     - resource: content
       table: spy_content_storage
       filter_column: fk_content
@@ -163,6 +167,8 @@ sync-data:
       store: false
       locale: true
       queue_group: sync.search.product #seems like a mistake on Spryker side
+      params:
+        type: page
     - resource: dynamic_config
       table: pyz_dynamic_config_storage
       filter_column: id_dynamic_config_storage
@@ -222,6 +228,8 @@ sync-data:
       store: true
       locale: true
       queue_group: sync.search.product
+      params:
+        type: page
     - resource: product_abstract_category
       table: spy_product_abstract_category_storage
       filter_column: fk_product_abstract
@@ -299,6 +307,8 @@ sync-data:
       store: true
       locale: true
       queue_group: sync.search.product
+      params:
+        type: page
     - resource: product_concrete
       table: spy_product_concrete_storage
       filter_column: fk_product

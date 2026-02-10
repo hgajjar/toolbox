@@ -9,6 +9,7 @@ type SyncEntity struct {
 	Locale       bool
 	QueueGroup   string `mapstructure:"queue_group"`
 	Mappings     []SyncEntityMapping
+	Params       map[string]string
 }
 
 type SyncEntityMapping struct {

@@ -35,6 +35,7 @@ type EntityInterface interface {
 	GetKey() string
 	GetData() string
 	GetStore() string
+	GetParams() map[string]string
 	GenerateMappingKey(resourceName, source, sourceId string) string
 	IsNil() bool
 }
@@ -45,10 +46,11 @@ type MappingInterface interface {
 }
 
 type message struct {
-	Key      string `json:"key"`
-	Value    any    `json:"value"`
-	Resource string `json:"resource"`
-	Store    string `json:"store,omitempty"`
+	Key      string            `json:"key"`
+	Value    any               `json:"value"`
+	Resource string            `json:"resource"`
+	Store    string            `json:"store,omitempty"`
+	Params   map[string]string `json:"params,omitempty"`
 }
 
 type syncMessage struct {
@@ -148,6 +150,7 @@ func (e *Exporter) exportDataChunk(ctx context.Context, plugin SyncDataPluginInt
 				decodedVal,
 				plugin.GetResourceName(),
 				entity.GetStore(),
+				entity.GetParams(),
 			},
 		}
 		j, err := json.Marshal(m)

@@ -64,7 +64,9 @@ func (r *Repository) GetData(ctx context.Context, filter data.Filter) (<-chan *S
 	dataCh := make(chan *SyncEntity)
 	go func() {
 		for rows.Next() {
-			entity := &SyncEntity{}
+			entity := &SyncEntity{
+				Params: r.config.Params,
+			}
 
 			if r.config.Store && r.config.Locale {
 				err = rows.Scan(&entity.Key, &entity.Data, &entity.Store, &entity.Locale)
