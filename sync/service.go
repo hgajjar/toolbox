@@ -38,20 +38,14 @@ func RunSyncData(ctx context.Context, dic *container.Container, args SyncDataArg
 	// Attach the Logger to the context.Context
 	ctx = logger.WithContext(ctx)
 
-	conn, err := amqp.Dial(args.RabbitmqConnString)
-	if err != nil {
-		logger.Panic().Err(err).Msg("Failed to connect to RabbitMQ")
-	}
-	defer conn.Close()
-
 	var workerDoneCh <-chan any
 	var queueWorker *queue.Worker
 	if args.RunQueueWorkerOpt {
-		workerDoneCh, queueWorker = startQueueWorker(ctx, args.Queues, conn, true, args.CmdPrefix, args.CmdDir, args.Cmd, writer)
+		workerDoneCh, queueWorker = startQueueWorker(ctx, args.Queues, dic.Queue(), true, args.CmdPrefix, args.CmdDir, args.Cmd, writer)
 	}
 
-	exporter := NewExporter(conn, getSyncDataPlugins(dic.DB(), args.ResourceFilter, args.SyncDataEntities))
-	err = exporter.Export(ctx, getIDs(ctx, args.IDsOpt))
+	exporter := NewExporter(dic.Queue(), getSyncDataPlugins(dic.DB(), args.ResourceFilter, args.SyncDataEntities))
+	err := exporter.Export(ctx, getIDs(ctx, args.IDsOpt))
 	if err != nil {
 		logger.Panic().Err(err).Msg("Failed to export data to rabbitmq")
 	}

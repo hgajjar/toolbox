@@ -8,6 +8,7 @@ import (
 	"github.com/Adaendra/uilive"
 	"github.com/Adaendra/uilive/pkg/writer"
 	"github.com/hgajjar/toolbox/config"
+	amqp "github.com/rabbitmq/amqp091-go"
 	"github.com/rs/zerolog"
 )
 
@@ -15,6 +16,7 @@ type Container struct {
 	writer *writer.Writer
 	logger *zerolog.Logger
 	db     *sql.DB
+	queue  *amqp.Connection
 }
 
 func New() *Container {
@@ -71,11 +73,29 @@ func (c *Container) DB() *sql.DB {
 	return c.db
 }
 
+func (c *Container) Queue() *amqp.Connection {
+	if c.queue == nil {
+		conn, err := amqp.Dial(config.GetRabbitMQConnectionString())
+		if err != nil {
+			c.Logger().Panic().Err(err).Msg("Failed to connect to RabbitMQ")
+		}
+		c.queue = conn
+	}
+
+	return c.queue
+}
+
 func (c *Container) Close() {
 	if c.db != nil {
 		err := c.db.Close()
 		if err != nil {
 			c.Logger().Error().Err(err).Msg("Failed to close Postgres connection")
+		}
+	}
+	if c.queue != nil {
+		err := c.queue.Close()
+		if err != nil {
+			c.Logger().Error().Err(err).Msg("Failed to close RabbitMQ connection")
 		}
 	}
 }
