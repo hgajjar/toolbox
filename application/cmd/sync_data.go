@@ -88,6 +88,7 @@ var syncDataCmd = &cobra.Command{
 		}
 
 		dic := container.New()
+		defer dic.Close()
 
 		sync.RunSyncData(
 			cmd.Context(),

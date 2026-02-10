@@ -1,6 +1,7 @@
 package container
 
 import (
+	"database/sql"
 	"io"
 	"log"
 
@@ -13,6 +14,7 @@ import (
 type Container struct {
 	writer *writer.Writer
 	logger *zerolog.Logger
+	db     *sql.DB
 }
 
 func New() *Container {
@@ -55,4 +57,25 @@ func (c *Container) Logger() *zerolog.Logger {
 	}
 
 	return c.logger
+}
+
+func (c *Container) DB() *sql.DB {
+	if c.db == nil {
+		db, err := sql.Open("postgres", config.GetPostgresConnectionString())
+		if err != nil {
+			c.Logger().Panic().Err(err).Msg("Failed to connect to Postgres")
+		}
+		c.db = db
+	}
+
+	return c.db
+}
+
+func (c *Container) Close() {
+	if c.db != nil {
+		err := c.db.Close()
+		if err != nil {
+			c.Logger().Error().Err(err).Msg("Failed to close Postgres connection")
+		}
+	}
 }

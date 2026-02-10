@@ -58,6 +58,7 @@ var queueWorkerCmd = &cobra.Command{
 		}
 
 		dic := container.New()
+		defer dic.Close()
 
 		queue.StartWorker(cmd.Context(), dic, workerArgs)
 	},

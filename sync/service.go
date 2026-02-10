@@ -44,19 +44,13 @@ func RunSyncData(ctx context.Context, dic *container.Container, args SyncDataArg
 	}
 	defer conn.Close()
 
-	dbconn, err := sql.Open("postgres", args.PostgresConnString)
-	if err != nil {
-		logger.Panic().Err(err).Msg("Failed to connect to Postgres")
-	}
-	defer dbconn.Close()
-
 	var workerDoneCh <-chan any
 	var queueWorker *queue.Worker
 	if args.RunQueueWorkerOpt {
 		workerDoneCh, queueWorker = startQueueWorker(ctx, args.Queues, conn, true, args.CmdPrefix, args.CmdDir, args.Cmd, writer)
 	}
 
-	exporter := NewExporter(conn, getSyncDataPlugins(dbconn, args.ResourceFilter, args.SyncDataEntities))
+	exporter := NewExporter(conn, getSyncDataPlugins(dic.DB(), args.ResourceFilter, args.SyncDataEntities))
 	err = exporter.Export(ctx, getIDs(ctx, args.IDsOpt))
 	if err != nil {
 		logger.Panic().Err(err).Msg("Failed to export data to rabbitmq")
