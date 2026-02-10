@@ -17,16 +17,14 @@ import (
 )
 
 type SyncDataArgs struct {
-	RunQueueWorkerOpt  bool
-	Queues             []string
-	CmdPrefix          []string
-	CmdDir             string
-	Cmd                []string
-	SyncDataEntities   []config.SyncEntity
-	RabbitmqConnString string
-	PostgresConnString string
-	ResourceFilter     string
-	IDsOpt             string
+	RunQueueWorkerOpt bool
+	Queues            []string
+	CmdPrefix         []string
+	CmdDir            string
+	Cmd               []string
+	SyncDataEntities  []config.SyncEntity
+	ResourceFilter    string
+	IDsOpt            string
 }
 
 func RunSyncData(ctx context.Context, dic *container.Container, args SyncDataArgs) {

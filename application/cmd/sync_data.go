@@ -75,16 +75,14 @@ var syncDataCmd = &cobra.Command{
 		}
 
 		syncDataArgs := sync.SyncDataArgs{
-			Queues:             queues,
-			CmdPrefix:          cmdPrefix,
-			CmdDir:             cmdDir,
-			Cmd:                consoleCmd,
-			SyncDataEntities:   syncConfigEntities,
-			ResourceFilter:     resourceFilter,
-			IDsOpt:             idsOpt,
-			RunQueueWorkerOpt:  runQueueWorkerOpt,
-			RabbitmqConnString: config.GetRabbitMQConnectionString(),
-			PostgresConnString: config.GetPostgresConnectionString(),
+			Queues:            queues,
+			CmdPrefix:         cmdPrefix,
+			CmdDir:            cmdDir,
+			Cmd:               consoleCmd,
+			SyncDataEntities:  syncConfigEntities,
+			ResourceFilter:    resourceFilter,
+			IDsOpt:            idsOpt,
+			RunQueueWorkerOpt: runQueueWorkerOpt,
 		}
 
 		dic := container.New()
