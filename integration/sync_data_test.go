@@ -37,8 +37,15 @@ func TestSyncData(t *testing.T) {
 
 	db := dic.DB(buildPostgresConnStr(postgresHostPort))
 
-	rabbitmqPort, _ := strconv.Atoi(rabbitmqHostPort)
-	postgresPort, _ := strconv.Atoi(postgresHostPort)
+	rabbitmqPort, err := strconv.Atoi(rabbitmqHostPort)
+	if err != nil {
+		t.Fatalf("invalid RabbitMQ host port %q: %v", rabbitmqHostPort, err)
+	}
+	postgresPort, err := strconv.Atoi(postgresHostPort)
+	if err != nil {
+		t.Fatalf("invalid Postgres host port %q: %v", postgresHostPort, err)
+	}
+
 	cfg := &config.Config{
 		RabbitMq: config.RabbitMQ{
 			Server:   "127.0.0.1",
@@ -59,7 +66,7 @@ func TestSyncData(t *testing.T) {
 		URL: fmt.Sprintf("amqp://guest:guest@127.0.0.1:%s/", rabbitmqHostPort),
 	})
 	if err != nil {
-		log.Panic(err)
+		t.Fatalf("failed to create RabbitMQ client: %v", err)
 	}
 	defer rmq.Close()
 
@@ -175,14 +182,14 @@ func setupTestData(ctx context.Context, db *sql.DB) {
 	`)
 
 	if err != nil {
-		panic(err)
+		log.Fatalf("failed to set up test data: %v", err)
 	}
 }
 
 func consumeMessagesFromQueue(rmq *rabbitmq.Rabbitmq, queueName string) []string {
 	mCh, err := rmq.Consume(queueName, 100)
 	if err != nil {
-		log.Panic(err)
+		log.Fatalf("failed to consume messages from queue %q: %v", queueName, err)
 	}
 
 	var messages []string

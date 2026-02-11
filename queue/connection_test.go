@@ -25,7 +25,7 @@ func TestConnection_Setup(t *testing.T) {
 		}
 		cfg := &config.Config{
 			RabbitMq: config.RabbitMQ{
-				ConnectionString: "amqp://guest:guest@localhost:5672/",
+				ConnectionString: "amqp://guest:guest@invalid-host:5672/",
 			},
 		}
 		conn := NewConnection(args)

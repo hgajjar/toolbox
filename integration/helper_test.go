@@ -31,11 +31,14 @@ func setupRabbitMqService(ctx context.Context) (func(), string, error) {
 	})
 }
 
-func setupRabbitMqConnection(hostPort string) (*rabbitmq.Rabbitmq, error) {
+func setupRabbitMqConnection(ctx context.Context, hostPort string) (*rabbitmq.Rabbitmq, error) {
+	timeout := time.After(5 * time.Second)
 	for {
 		select {
-		case <-time.After(5 * time.Second):
+		case <-timeout:
 			return nil, errors.New("timed-out while waiting for rabbitmq service to start")
+		case <-ctx.Done():
+			return nil, ctx.Err()
 		default:
 			rmq, err := rabbitmq.New(rabbitmq.Config{
 				URL: fmt.Sprintf("amqp://guest:guest@127.0.0.1:%s/", hostPort),
@@ -81,7 +84,7 @@ func setupAndStartContainer(ctx context.Context, imageName string, ports []strin
 	portBindings := map[nat.Port][]nat.PortBinding{}
 
 	for _, port := range ports {
-		natPort := nat.Port(port)
+		natPort := nat.Port(port + "/tcp")
 		exposedPorts[natPort] = struct{}{}
 		portBindings[natPort] = []nat.PortBinding{{HostIP: "127.0.0.1", HostPort: "0"}}
 	}
@@ -133,10 +136,13 @@ func setupAndStartContainer(ctx context.Context, imageName string, ports []strin
 }
 
 func waitUntilContainerHealthy(ctx context.Context, dockerClient *client.Client, containerID string) error {
+	timeout := time.After(30 * time.Second)
 	for {
 		select {
-		case <-time.After(30 * time.Second):
+		case <-timeout:
 			return errors.New("timed-out while waiting for container to become healthy")
+		case <-ctx.Done():
+			return ctx.Err()
 		default:
 			info, err := dockerClient.ContainerInspect(ctx, containerID)
 			if err != nil {
