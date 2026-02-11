@@ -5,6 +5,7 @@ import (
 	"errors"
 	"time"
 
+	"github.com/hgajjar/toolbox/config"
 	amqp "github.com/rabbitmq/amqp091-go"
 	"github.com/rs/zerolog"
 )
@@ -17,9 +18,9 @@ func NewConnection(args WorkerArgs) *connection {
 	return &connection{args: args}
 }
 
-func (c *connection) Setup(ctx context.Context, args WorkerArgs) (*amqp.Connection, error) {
+func (c *connection) Setup(ctx context.Context, cfg *config.Config, args WorkerArgs) (*amqp.Connection, error) {
 	logger := zerolog.Ctx(ctx)
-	conn, err := amqp.Dial(args.RabbitmqConnString)
+	conn, err := amqp.Dial(cfg.RabbitMq.GetConnectionString())
 	if err != nil {
 		if !args.DaemonMode {
 			return nil, errors.New("failed to connect to RabbitMQ")
@@ -27,7 +28,7 @@ func (c *connection) Setup(ctx context.Context, args WorkerArgs) (*amqp.Connecti
 
 		// In daemon mode, we wait and retry connection with exponential backoff
 		logger.Error().Err(err).Msg("failed to connect to RabbitMQ, retrying...")
-		conn, err = c.waitAndRetry(ctx, args.RabbitmqConnString, logger)
+		conn, err = c.waitAndRetry(ctx, cfg.RabbitMq.GetConnectionString(), logger)
 		if err != nil {
 			return nil, err
 		}

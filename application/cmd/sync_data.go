@@ -1,9 +1,6 @@
 package cmd
 
 import (
-	"log"
-	"strings"
-
 	"github.com/hgajjar/toolbox/config"
 	"github.com/hgajjar/toolbox/container"
 	"github.com/hgajjar/toolbox/sync"
@@ -27,8 +24,6 @@ If not, full export will be executed.`
 	argRunQueueWorker      = "run-queue-worker"
 	argRunQueueWorkerShort = "q"
 	argRunQueueWorkerUsage = `Run queue workers in the background.`
-
-	syncDataEntitiesKey = "sync-data.entities"
 )
 
 var (
@@ -59,39 +54,20 @@ func (s *SyncDataCmd) Cmd() *cobra.Command {
 var syncDataCmd = &cobra.Command{
 	Use: "sync:data",
 	Run: func(cmd *cobra.Command, args []string) {
-		queues := viper.GetStringSlice(queueNamesKey)
-
-		cmdPrefix := strings.Split(viper.GetString(config.ConsoleCmdPrefixKey), " ")
-		cmdDir := viper.GetString(config.ConsoleCmdDirKey)
-		consoleCmd := strings.Split(viper.GetString(config.ConsoleCmdKey), " ")
-
-		resourceFilter := viper.GetString(argResource)
-
-		var syncConfigEntities []config.SyncEntity
-
-		err := viper.UnmarshalKey(syncDataEntitiesKey, &syncConfigEntities)
-		if err != nil {
-			log.Panicf("Failed to parse sync-data.entities config: %s", err)
-		}
+		cfg := config.New()
 
 		syncDataArgs := sync.SyncDataArgs{
-			Queues:             queues,
-			CmdPrefix:          cmdPrefix,
-			CmdDir:             cmdDir,
-			Cmd:                consoleCmd,
-			SyncDataEntities:   syncConfigEntities,
-			ResourceFilter:     resourceFilter,
-			IDsOpt:             idsOpt,
-			RunQueueWorkerOpt:  runQueueWorkerOpt,
-			RabbitmqConnString: config.GetRabbitMQConnectionString(),
-			PostgresConnString: config.GetPostgresConnectionString(),
+			IDsOpt:            idsOpt,
+			RunQueueWorkerOpt: runQueueWorkerOpt,
 		}
 
 		dic := container.New()
+		defer dic.Close()
 
 		sync.RunSyncData(
 			cmd.Context(),
 			dic,
+			cfg,
 			syncDataArgs,
 		)
 	},

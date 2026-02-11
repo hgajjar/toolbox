@@ -9,6 +9,7 @@ type SyncEntity struct {
 	Data   string
 	Store  string
 	Locale string
+	Params map[string]string
 }
 
 func (p *SyncEntity) GetKey() string {
@@ -25,6 +26,10 @@ func (p *SyncEntity) GetStore() string {
 
 func (p *SyncEntity) GetLocale() string {
 	return p.Locale
+}
+
+func (p *SyncEntity) GetParams() map[string]string {
+	return p.Params
 }
 
 func (p *SyncEntity) IsNil() bool {

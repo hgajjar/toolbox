@@ -17,47 +17,28 @@ import (
 )
 
 type SyncDataArgs struct {
-	RunQueueWorkerOpt  bool
-	Queues             []string
-	CmdPrefix          []string
-	CmdDir             string
-	Cmd                []string
-	SyncDataEntities   []config.SyncEntity
-	RabbitmqConnString string
-	PostgresConnString string
-	ResourceFilter     string
-	IDsOpt             string
+	RunQueueWorkerOpt bool
+	IDsOpt            string
 }
 
-func RunSyncData(ctx context.Context, dic *container.Container, args SyncDataArgs) {
-	writer, stopFunc := dic.Writer()
-	defer stopFunc()
-
+func RunSyncData(ctx context.Context, dic *container.Container, cfg *config.Config, args SyncDataArgs) {
+	writer := dic.Writer()
 	logger := dic.Logger()
 
 	// Attach the Logger to the context.Context
 	ctx = logger.WithContext(ctx)
 
-	conn, err := amqp.Dial(args.RabbitmqConnString)
-	if err != nil {
-		logger.Panic().Err(err).Msg("Failed to connect to RabbitMQ")
-	}
-	defer conn.Close()
-
-	dbconn, err := sql.Open("postgres", args.PostgresConnString)
-	if err != nil {
-		logger.Panic().Err(err).Msg("Failed to connect to Postgres")
-	}
-	defer dbconn.Close()
+	queueConn := dic.Queue(cfg.RabbitMq.GetConnectionString())
+	dbConn := dic.DB(cfg.Postgres.GetConnectionString())
 
 	var workerDoneCh <-chan any
 	var queueWorker *queue.Worker
 	if args.RunQueueWorkerOpt {
-		workerDoneCh, queueWorker = startQueueWorker(ctx, args.Queues, conn, true, args.CmdPrefix, args.CmdDir, args.Cmd, writer)
+		workerDoneCh, queueWorker = startQueueWorker(ctx, cfg.QueueNames, queueConn, true, cfg.ConsoleCmdPrefix, cfg.ConsoleCmdDir, cfg.ConsoleCmd, writer)
 	}
 
-	exporter := NewExporter(conn, getSyncDataPlugins(dbconn, args.ResourceFilter, args.SyncDataEntities))
-	err = exporter.Export(ctx, getIDs(ctx, args.IDsOpt))
+	exporter := NewExporter(queueConn, getSyncDataPlugins(dbConn, cfg.ResourceFilter, cfg.SyncDataEntities))
+	err := exporter.Export(ctx, getIDs(ctx, args.IDsOpt))
 	if err != nil {
 		logger.Panic().Err(err).Msg("Failed to export data to rabbitmq")
 	}

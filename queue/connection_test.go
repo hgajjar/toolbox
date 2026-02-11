@@ -4,19 +4,15 @@ import (
 	"context"
 	"testing"
 	"time"
+
+	"github.com/hgajjar/toolbox/config"
 )
 
 func TestConnection_New(t *testing.T) {
-	args := WorkerArgs{
-		RabbitmqConnString: "amqp://guest:guest@localhost:5672/",
-	}
+	args := WorkerArgs{}
 	conn := NewConnection(args)
 	if conn == nil {
 		t.Fatal("Expected NewConnection to return a non-nil connection")
-	}
-
-	if conn.args.RabbitmqConnString != args.RabbitmqConnString {
-		t.Fatalf("Expected RabbitmqConnString to be %s, got %s", args.RabbitmqConnString, conn.args.RabbitmqConnString)
 	}
 }
 
@@ -25,13 +21,17 @@ func TestConnection_Setup(t *testing.T) {
 		t.Parallel()
 
 		args := WorkerArgs{
-			RabbitmqConnString: "amqp://guest:guest@invalid-host:5672/",
-			DaemonMode:         false,
+			DaemonMode: false,
+		}
+		cfg := &config.Config{
+			RabbitMq: config.RabbitMQ{
+				ConnectionString: "amqp://guest:guest@invalid-host:5672/",
+			},
 		}
 		conn := NewConnection(args)
 		ctx := context.Background()
 
-		_, err := conn.Setup(ctx, args)
+		_, err := conn.Setup(ctx, cfg, args)
 		if err == nil {
 			t.Fatal("Expected Setup to return an error when RabbitMQ is not running")
 		}
@@ -41,15 +41,19 @@ func TestConnection_Setup(t *testing.T) {
 		t.Parallel()
 
 		args := WorkerArgs{
-			RabbitmqConnString: "amqp://guest:guest@invalid-host:5672/",
-			DaemonMode:         true,
-			connectionTimeout:  time.Second * 3,
+			DaemonMode:        true,
+			connectionTimeout: time.Second * 3,
+		}
+		cfg := &config.Config{
+			RabbitMq: config.RabbitMQ{
+				ConnectionString: "amqp://guest:guest@invalid-host:5672/",
+			},
 		}
 		conn := NewConnection(args)
 		ctx := context.Background()
 		start := time.Now()
 
-		_, err := conn.Setup(ctx, args)
+		_, err := conn.Setup(ctx, cfg, args)
 		if err == nil {
 			t.Fatal("Expected Setup to return an error after retrying in DaemonMode when RabbitMQ is not running")
 		}
