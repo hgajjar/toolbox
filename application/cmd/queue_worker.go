@@ -1,19 +1,14 @@
 package cmd
 
 import (
-	"strings"
-
 	"github.com/hgajjar/toolbox/config"
 	"github.com/hgajjar/toolbox/container"
 	"github.com/hgajjar/toolbox/queue"
 
 	"github.com/spf13/cobra"
-	"github.com/spf13/viper"
 )
 
 const (
-	queueNamesKey = "worker.queues"
-
 	argDaemonMode      = "daemon-mode"
 	argDaemonModeShort = "d"
 	argDaemonModeUsage = `Keep queue workers running in daemon mode.`
@@ -42,24 +37,15 @@ func NewQueueWorkerCmd() *QueueWorkerCmd {
 var queueWorkerCmd = &cobra.Command{
 	Use: "queue:worker",
 	Run: func(cmd *cobra.Command, args []string) {
-		queues := viper.GetStringSlice(queueNamesKey)
-
-		cmdPrefix := strings.Split(viper.GetString(config.ConsoleCmdPrefixKey), " ")
-		cmdDir := viper.GetString(config.ConsoleCmdDirKey)
-		consoleCmd := strings.Split(viper.GetString(config.ConsoleCmdKey), " ")
+		cfg := config.New()
 
 		workerArgs := queue.WorkerArgs{
-			RabbitmqConnString: config.GetRabbitMQConnectionString(),
-			Queues:             queues,
-			DaemonMode:         daemonModeOpt,
-			CmdPrefix:          cmdPrefix,
-			CmdDir:             cmdDir,
-			Cmd:                consoleCmd,
+			DaemonMode: daemonModeOpt,
 		}
 
 		dic := container.New()
 		defer dic.Close()
 
-		queue.StartWorker(cmd.Context(), dic, workerArgs)
+		queue.StartWorker(cmd.Context(), dic, cfg, workerArgs)
 	},
 }

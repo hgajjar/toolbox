@@ -2,6 +2,7 @@ package config
 
 import (
 	"fmt"
+	"log"
 	"os"
 	"strings"
 	"time"
@@ -18,6 +19,11 @@ const (
 	ConsoleCmdPrefixKey = "consoleCmdPrefix"
 	ConsoleCmdDirKey    = "consoleCmdDir"
 	ConsoleCmdKey       = "consoleCmd"
+
+	queueNamesKey       = "worker.queues"
+	syncDataEntitiesKey = "sync-data.entities"
+
+	resourceKey = "resource"
 
 	rabbitmqConnectionStringKey = "rabbitmq.connection-string"
 	rabbitmqServerKey           = "rabbitmq.server"
@@ -52,33 +58,84 @@ func init() {
 	Verbose = countVerbosityLevel(os.Args)
 }
 
-func GetRabbitMQConnectionString() string {
-	rabbitmqConnStr := viper.GetString(rabbitmqConnectionStringKey)
-	if rabbitmqConnStr != "" {
-		return rabbitmqConnStr
-	}
+type Config struct {
+	ConsoleCmdPrefix []string
+	ConsoleCmdDir    string
+	ConsoleCmd       []string
 
-	rabbitmqServer := viper.GetString(rabbitmqServerKey)
-	rabbitmqPort := viper.GetInt(rabbitmqPortKey)
-	rabbitmqUser := viper.GetString(rabbitmqUserKey)
-	rabbitmqPassword := viper.GetString(rabbitmqPasswordKey)
+	QueueNames       []string
+	SyncDataEntities []SyncEntity
 
-	return fmt.Sprintf("amqp://%s:%s@%s:%d/", rabbitmqUser, rabbitmqPassword, rabbitmqServer, rabbitmqPort)
+	ResourceFilter string
+
+	RabbitMq RabbitMQ
+	Postgres Postgres
 }
 
-func GetPostgresConnectionString() string {
-	postgresConnStr := viper.GetString(postgresConnectionStringKey)
-	if postgresConnStr != "" {
-		return postgresConnStr
+type RabbitMQ struct {
+	ConnectionString string
+	Server           string
+	Port             int
+	User             string
+	Password         string
+}
+
+type Postgres struct {
+	ConnectionString string
+	Server           string
+	Port             int
+	User             string
+	Password         string
+	Database         string
+}
+
+func New() *Config {
+	var syncConfigEntities []SyncEntity
+
+	err := viper.UnmarshalKey(syncDataEntitiesKey, &syncConfigEntities)
+	if err != nil {
+		log.Panicf("Failed to parse sync-data.entities config: %s", err)
 	}
 
-	postgresServer := viper.GetString(postgresServerKey)
-	postgresPort := viper.GetInt(postgresPortKey)
-	postgresUser := viper.GetString(postgresUserKey)
-	postgresPassword := viper.GetString(postgresPasswordKey)
-	postgresDatabase := viper.GetString(postgresDatabaseKey)
+	return &Config{
+		ConsoleCmdPrefix: strings.Split(viper.GetString(ConsoleCmdPrefixKey), " "),
+		ConsoleCmdDir:    viper.GetString(ConsoleCmdDirKey),
+		ConsoleCmd:       strings.Split(viper.GetString(ConsoleCmdKey), " "),
+		QueueNames:       viper.GetStringSlice(queueNamesKey),
+		SyncDataEntities: syncConfigEntities,
+		ResourceFilter:   viper.GetString(resourceKey),
+		RabbitMq: RabbitMQ{
+			ConnectionString: viper.GetString(rabbitmqConnectionStringKey),
+			Server:           viper.GetString(rabbitmqServerKey),
+			Port:             viper.GetInt(rabbitmqPortKey),
+			User:             viper.GetString(rabbitmqUserKey),
+			Password:         viper.GetString(rabbitmqPasswordKey),
+		},
+		Postgres: Postgres{
+			ConnectionString: viper.GetString(postgresConnectionStringKey),
+			Server:           viper.GetString(postgresServerKey),
+			Port:             viper.GetInt(postgresPortKey),
+			User:             viper.GetString(postgresUserKey),
+			Password:         viper.GetString(postgresPasswordKey),
+			Database:         viper.GetString(postgresDatabaseKey),
+		},
+	}
+}
 
-	return fmt.Sprintf("postgres://%s:%s@%s:%d/%s?sslmode=disable", postgresUser, postgresPassword, postgresServer, postgresPort, postgresDatabase)
+func (r *RabbitMQ) GetConnectionString() string {
+	if r.ConnectionString != "" {
+		return r.ConnectionString
+	}
+
+	return fmt.Sprintf("amqp://%s:%s@%s:%d/", r.User, r.Password, r.Server, r.Port)
+}
+
+func (p *Postgres) GetConnectionString() string {
+	if p.ConnectionString != "" {
+		return p.ConnectionString
+	}
+
+	return fmt.Sprintf("postgres://%s:%s@%s:%d/%s?sslmode=disable", p.User, p.Password, p.Server, p.Port, p.Database)
 }
 
 func countVerbosityLevel(args []string) int {
